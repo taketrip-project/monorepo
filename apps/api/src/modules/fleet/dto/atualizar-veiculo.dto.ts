@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsInt, IsOptional, Min } from 'class-validator';
+import { ArrayUnique, IsArray, IsBoolean, IsInt, IsOptional, Min } from 'class-validator';
 import { CriarVeiculoDto } from './criar-veiculo.dto';
 
 /**
@@ -11,6 +11,7 @@ export class AtualizarVeiculoDto extends CriarVeiculoDto {
   /** Substitui a lista de poltronas bloqueadas por inteiro, quando enviado. */
   @IsOptional()
   @IsArray()
+  @ArrayUnique()
   @IsInt({ each: true })
   @Min(1, { each: true })
   poltronas_bloqueadas?: number[];
