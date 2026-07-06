@@ -64,6 +64,45 @@ describe('apiFetch — interceptor de refresh', () => {
     expect(getAccessToken()).toBeNull();
   });
 
+  it('requisição autenticada sem 401 não tenta renovar nem repetir', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ ok: true }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await apiFetch<{ ok: boolean }>('/organizacao');
+
+    expect(result).toEqual({ ok: true });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const headers = fetchMock.mock.calls[0][1]?.headers as Headers;
+    expect(headers.get('Authorization')).toBe('Bearer access-velho');
+  });
+
+  it('duas requisições concorrentes que tomam 401 disparam só um /auth/refresh (dedupe)', async () => {
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ erro: { codigo: 'nao_autenticado', mensagem: 'Expirado' } }, { status: 401 }),
+    );
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ erro: { codigo: 'nao_autenticado', mensagem: 'Expirado' } }, { status: 401 }),
+    );
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ access_token: 'access-novo', refresh_token: 'refresh-novo', expira_em_segundos: 900 }),
+    );
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true, de: 'a' }));
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true, de: 'b' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const [resultA, resultB] = await Promise.all([
+      apiFetch<{ ok: boolean; de: string }>('/organizacao'),
+      apiFetch<{ ok: boolean; de: string }>('/organizacao/membros'),
+    ]);
+
+    expect(resultA).toEqual({ ok: true, de: 'a' });
+    expect(resultB).toEqual({ ok: true, de: 'b' });
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    const chamadasRefresh = fetchMock.mock.calls.filter(([url]) => String(url).includes('/auth/refresh'));
+    expect(chamadasRefresh).toHaveLength(1);
+  });
+
   it('não injeta Authorization quando auth: false (endpoints públicos)', async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ ok: true }));
     vi.stubGlobal('fetch', fetchMock);

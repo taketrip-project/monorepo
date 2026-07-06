@@ -73,41 +73,51 @@
 | `--tt-font` | **Trip Sans** (400/500/600/700) | Toda a UI |
 | `--tt-mono` | **Trip Sans Mono** (400/500) | Horários, valores monetários, IDs, números de poltrona |
 
-**Trip Sans** e **Trip Sans Mono** são fontes de marca (não estão no Google Fonts) — carregar via `@font-face` a partir dos arquivos do time de design:
+**Trip Sans** e **Trip Sans Mono** são fontes de marca (não estão no Google Fonts) — os arquivos reais entregues pelo time de design são `.otf`/`.ttf` (não `.woff2`), servidos em `apps/web/public/fonts/`. A implementação efetiva (`apps/web/src/styles/fonts.css`) declara a fonte variável primeiro (cobre 100–900, resolve pesos sem arquivo estático como o 600/semibold usado em título de card e nome de lista) e depois os estáticos regular/medium/bold/ultra, que vencem nos pesos exatos 400/500/700/900 por serem declarados por último (regra do CSS Fonts Module para faixas de peso equivalentes). Trip Sans Mono só tem um arquivo estático (400) — peso 500 em mono cai na mesma face até chegar um `trip-sans-mono-medium.otf`.
 
-```html
-<style>
+```css
 @font-face {
   font-family: 'Trip Sans';
-  src: url('/fonts/TripSans-Regular.woff2') format('woff2');
+  src: url('/fonts/trip-sans-variable.ttf') format('truetype-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Trip Sans';
+  src: url('/fonts/trip-sans.otf') format('opentype');
   font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
 @font-face {
   font-family: 'Trip Sans';
-  src: url('/fonts/TripSans-Medium.woff2') format('woff2');
+  src: url('/fonts/trip-sans-medium.otf') format('opentype');
   font-weight: 500;
+  font-style: normal;
+  font-display: swap;
 }
 @font-face {
   font-family: 'Trip Sans';
-  src: url('/fonts/TripSans-SemiBold.woff2') format('woff2');
-  font-weight: 600;
-}
-@font-face {
-  font-family: 'Trip Sans';
-  src: url('/fonts/TripSans-Bold.woff2') format('woff2');
+  src: url('/fonts/trip-sans-bold.otf') format('opentype');
   font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Trip Sans';
+  src: url('/fonts/trip-sans-ultra.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
 }
 @font-face {
   font-family: 'Trip Sans Mono';
-  src: url('/fonts/TripSansMono-Regular.woff2') format('woff2');
+  src: url('/fonts/trip-sans-mono-regular.otf') format('opentype');
   font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
-@font-face {
-  font-family: 'Trip Sans Mono';
-  src: url('/fonts/TripSansMono-Medium.woff2') format('woff2');
-  font-weight: 500;
-}
-</style>
 ```
 
 ### Escala
