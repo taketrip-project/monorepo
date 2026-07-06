@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { FotosService } from './fotos.service';
+import { FotosService, TAMANHO_MAXIMO_BYTES } from './fotos.service';
 
 /** `docs/api/excursions.yaml` — bloco `/excursoes/{excursaoId}/fotos*` (S3). */
 @Controller('excursoes/:excursaoId/fotos')
@@ -20,7 +20,12 @@ export class FotosController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @UseInterceptors(FileInterceptor('arquivo', { storage: memoryStorage() }))
+  @UseInterceptors(
+    FileInterceptor('arquivo', {
+      storage: memoryStorage(),
+      limits: { fileSize: TAMANHO_MAXIMO_BYTES },
+    }),
+  )
   enviar(
     @Param('excursaoId', ParseUUIDPipe) excursaoId: string,
     @UploadedFile() arquivo?: Express.Multer.File,

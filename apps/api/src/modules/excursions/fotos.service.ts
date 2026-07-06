@@ -14,7 +14,7 @@ const MAPA_MIME_EXTENSAO: Record<string, string> = {
   'image/webp': 'webp',
 };
 
-const TAMANHO_MAXIMO_BYTES = 5 * 1024 * 1024; // 5MB
+export const TAMANHO_MAXIMO_BYTES = 5 * 1024 * 1024; // 5MB
 
 /**
  * Fotos da excursão (S3). `ordem = 1` é a foto de capa (comentário do
