@@ -1,0 +1,427 @@
+openapi: 3.1.0
+info:
+  title: Taketrip API — Módulo bookings
+  version: 0.1.0
+  description: >
+    Reserva, mapa de poltronas, cadastro rápido, pagamento manual, busca,
+    embarque e lista imprimível (H1.8–H1.13). Rotas autenticadas e escopadas
+    na organização do JWT. Regra central: poltrona única é garantida NO BANCO
+    (UNIQUE parcial) — conflito responde 409 `poltrona_ocupada` com sugestão
+    de poltronas livres. Atualização "sem refresh" (H3.3): o frontend faz
+    polling curto destes GETs (10–30s) — sem WebSocket no MVP.
+servers:
+  - url: /api/v1
+
+security:
+  - bearerAuth: []
+
+paths:
+  /excursoes/{excursaoId}/mapa-poltronas:
+    get:
+      summary: Mapa de poltronas da excursão (H1.8)
+      description: >
+        Estados por poltrona: livre · pendente · sinal_pago · pago ·
+        bloqueada · embarcada. Vagas sempre calculadas (capacidade − reservas
+        ativas).
+      parameters:
+        - { name: excursaoId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MapaPoltronas' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+
+  /excursoes/{excursaoId}/reservas:
+    parameters:
+      - { name: excursaoId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Listar/buscar reservas da excursão (H1.11)
+      description: >
+        `busca` aceita nome (tolerante a acento e caixa — maria == María ==
+        MARIA) ou número de poltrona. Meta: ≤200ms com excursão cheia.
+      parameters:
+        - { name: busca, in: query, schema: { type: string } }
+        - name: status_pagamento
+          in: query
+          schema: { type: string, enum: [pendente, sinal_pago, pago, cancelado] }
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/PorPagina'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [dados, paginacao]
+                properties:
+                  dados:
+                    type: array
+                    items: { $ref: '#/components/schemas/Reserva' }
+                  paginacao: { $ref: '#/components/schemas/Paginacao' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+    post:
+      summary: Cadastro rápido — criar reserva (H1.9)
+      description: >
+        ≤4 campos: nome, whatsapp, forma de pagamento, valor. CPF opcional.
+        WhatsApp já cadastrado na organização REAPROVEITA o passageiro (não
+        duplica). Reserva nasce `ativa` + pagamento `pendente`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [poltrona, nome, whatsapp]
+              properties:
+                poltrona: { type: integer, minimum: 1 }
+                nome: { type: string, maxLength: 120 }
+                whatsapp: { type: string, description: Normalizado para E.164 no servidor. }
+                cpf: { type: [string, 'null'] }
+                forma_pagamento:
+                  type: [string, 'null']
+                  enum: [dinheiro, pix_manual, pix_plataforma, outro, null]
+                valor_centavos:
+                  type: [integer, 'null']
+                  minimum: 0
+                  description: Default = preço da excursão.
+                ponto_embarque_id: { type: [string, 'null'], format: uuid }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Reserva' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+        '409':
+          description: >
+            CONFLITO DE POLTRONA (codigo `poltrona_ocupada`): duas tentativas
+            simultâneas → exatamente uma vence (constraint no banco).
+            `detalhes.poltronas_livres` sugere alternativas. Também:
+            `poltrona_bloqueada` | `poltrona_inexistente` |
+            `excursao_nao_aceita_reserva` (rascunho/cancelada/concluída).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+        '422': { $ref: '#/components/responses/ErroValidacao' }
+
+  /excursoes/{excursaoId}/lista-embarque:
+    get:
+      summary: Lista de embarque agrupada por ponto (H1.12)
+      description: >
+        Grupos na ordem do itinerário + KPI `embarcados/total`. O frontend
+        mantém o estado carregado utilizável em conexão ruim (falha de rede
+        não apaga a tela).
+      parameters:
+        - { name: excursaoId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ListaEmbarque' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+
+  /excursoes/{excursaoId}/lista-passageiros/impressao:
+    get:
+      summary: Lista de passageiros imprimível — fiscalização ANTT (H1.13)
+      description: >
+        Nome + documento quando informado. Funciona com dados parciais:
+        passageiro sem CPF sai só com nome — NUNCA bloqueia a geração.
+      parameters:
+        - { name: excursaoId, in: path, required: true, schema: { type: string, format: uuid } }
+        - name: formato
+          in: query
+          schema: { type: string, enum: [pdf, html], default: pdf }
+      responses:
+        '200':
+          description: Documento pronto para impressão.
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+            text/html:
+              schema: { type: string }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+
+  /reservas/{reservaId}:
+    parameters:
+      - { name: reservaId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Ficha da reserva/passageiro
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Reserva' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+    patch:
+      summary: Editar reserva (poltrona, ponto, valor, dados do passageiro)
+      description: Troca de poltrona segue a mesma garantia de unicidade (409 `poltrona_ocupada`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                poltrona: { type: integer, minimum: 1 }
+                ponto_embarque_id: { type: [string, 'null'], format: uuid }
+                valor_centavos: { type: integer, minimum: 0 }
+                forma_pagamento:
+                  type: [string, 'null']
+                  enum: [dinheiro, pix_manual, pix_plataforma, outro, null]
+                nome: { type: string, maxLength: 120 }
+                cpf: { type: [string, 'null'] }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Reserva' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+        '409':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+        '422': { $ref: '#/components/responses/ErroValidacao' }
+
+  /reservas/{reservaId}/status-pagamento:
+    post:
+      summary: Marcar pagamento manualmente — 1 toque (H1.10)
+      description: >
+        Transições permitidas: pendente → sinal_pago → pago; `cancelado`
+        como ação explícita. O status NUNCA regride — regressão responde
+        409 `transicao_pagamento_invalida`.
+      parameters:
+        - { name: reservaId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [sinal_pago, pago, cancelado] }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Reserva' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+        '409':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+  /reservas/{reservaId}/cancelar:
+    post:
+      summary: Cancelar reserva (H1.10)
+      description: >
+        Libera a poltrona NA HORA (some das vagas ocupadas; se a excursão
+        estava `lotada`, reverte para `publicada` na mesma transação).
+        Reserva paga/sinal_pago gera pendência de estorno.
+      parameters:
+        - { name: reservaId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                motivo: { type: [string, 'null'], maxLength: 500 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Reserva' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+        '409':
+          description: Já cancelada/expirada (codigo `transicao_invalida`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+  /reservas/{reservaId}/embarque:
+    parameters:
+      - { name: reservaId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      summary: Check-in — marcar embarcada com horário (H1.12)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Reserva' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+        '409':
+          description: Reserva não está ativa (codigo `transicao_invalida`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+    delete:
+      summary: Desfazer check-in (1 toque no mesmo lugar)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Reserva' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+
+  /passageiros:
+    get:
+      summary: Buscar passageiro da organização por WhatsApp (pré-preencher cadastro rápido)
+      parameters:
+        - { name: whatsapp, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Lista com 0 ou 1 resultado (WhatsApp é único por organização).
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Passageiro' }
+        '401': { $ref: '#/components/responses/ErroNaoAutenticado' }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  parameters:
+    Pagina:
+      name: pagina
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PorPagina:
+      name: por_pagina
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+
+  responses:
+    ErroNaoAutenticado:
+      description: Token ausente, inválido ou expirado (codigo `nao_autenticado`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+    ErroNaoEncontrado:
+      description: Recurso inexistente na organização atual (codigo `nao_encontrado`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+    ErroValidacao:
+      description: Corpo/parâmetros inválidos (codigo `validacao`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+
+  schemas:
+    Erro:
+      type: object
+      required: [erro]
+      properties:
+        erro:
+          type: object
+          required: [codigo, mensagem]
+          properties:
+            codigo: { type: string }
+            mensagem: { type: string }
+            detalhes: { type: object, additionalProperties: true }
+
+    Paginacao:
+      type: object
+      required: [pagina, por_pagina, total]
+      properties:
+        pagina: { type: integer }
+        por_pagina: { type: integer }
+        total: { type: integer }
+
+    Passageiro:
+      type: object
+      required: [id, nome, whatsapp]
+      properties:
+        id: { type: string, format: uuid }
+        nome: { type: string }
+        whatsapp: { type: string }
+        cpf: { type: [string, 'null'] }
+
+    Reserva:
+      type: object
+      required: [id, excursao_id, poltrona, status, status_pagamento, origem, valor_centavos, passageiro, criado_em]
+      properties:
+        id: { type: string, format: uuid }
+        excursao_id: { type: string, format: uuid }
+        poltrona: { type: integer }
+        status: { type: string, enum: [ativa, embarcada, expirada, cancelada] }
+        status_pagamento: { type: string, enum: [pendente, sinal_pago, pago, cancelado] }
+        origem: { type: string, enum: [organizador, pagina_publica] }
+        forma_pagamento:
+          type: [string, 'null']
+          enum: [dinheiro, pix_manual, pix_plataforma, outro, null]
+        valor_centavos: { type: integer }
+        ponto_embarque_id: { type: [string, 'null'], format: uuid }
+        expira_em: { type: [string, 'null'], format: date-time }
+        embarcada_em: { type: [string, 'null'], format: date-time }
+        passageiro: { $ref: '#/components/schemas/Passageiro' }
+        criado_em: { type: string, format: date-time }
+
+    Poltrona:
+      type: object
+      required: [numero, estado]
+      properties:
+        numero: { type: integer }
+        estado:
+          type: string
+          enum: [livre, pendente, sinal_pago, pago, embarcada, bloqueada]
+        reserva_id: { type: [string, 'null'], format: uuid }
+        passageiro_nome: { type: [string, 'null'] }
+
+    MapaPoltronas:
+      type: object
+      required: [excursao_id, layout, poltronas, vagas, capacidade]
+      properties:
+        excursao_id: { type: string, format: uuid }
+        layout:
+          type: object
+          required: [fileiras]
+          properties:
+            fileiras:
+              type: array
+              items:
+                type: array
+                items:
+                  oneOf: [{ type: integer }, { type: 'null' }]
+        poltronas:
+          type: array
+          items: { $ref: '#/components/schemas/Poltrona' }
+        vagas: { type: integer, description: SEMPRE calculado (capacidade − reservas ativas). }
+        capacidade: { type: integer }
+
+    ListaEmbarque:
+      type: object
+      required: [excursao_id, embarcados, total, grupos]
+      properties:
+        excursao_id: { type: string, format: uuid }
+        embarcados: { type: integer }
+        total: { type: integer }
+        grupos:
+          type: array
+          description: Um grupo por ponto de embarque, na ordem do itinerário.
+          items:
+            type: object
+            required: [ponto_embarque, passageiros]
+            properties:
+              ponto_embarque:
+                type: object
+                required: [id, local, horario, ordem]
+                properties:
+                  id: { type: string, format: uuid }
+                  local: { type: string }
+                  horario: { type: string, format: date-time }
+                  ordem: { type: integer }
+              passageiros:
+                type: array
+                items:
+                  type: object
+                  required: [reserva_id, nome, poltrona, embarcada]
+                  properties:
+                    reserva_id: { type: string, format: uuid }
+                    nome: { type: string }
+                    poltrona: { type: integer }
+                    embarcada: { type: boolean }
+                    embarcada_em: { type: [string, 'null'], format: date-time }

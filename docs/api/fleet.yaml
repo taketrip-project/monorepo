@@ -1,0 +1,242 @@
+openapi: 3.1.0
+info:
+  title: Taketrip API — Módulo fleet
+  version: 0.1.0
+  description: >
+    Veículos e layout de poltronas (H1.4). Todas as rotas são autenticadas e
+    escopadas na organização do JWT. Capacidade é sempre DERIVADA
+    (quantidade_poltronas − poltronas bloqueadas), nunca digitada.
+servers:
+  - url: /api/v1
+
+security:
+  - bearerAuth: []
+
+paths:
+  /veiculos:
+    get:
+      summary: Listar veículos da organização
+      parameters:
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/PorPagina'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [dados, paginacao]
+                properties:
+                  dados:
+                    type: array
+                    items: { $ref: '#/components/schemas/Veiculo' }
+                  paginacao: { $ref: '#/components/schemas/Paginacao' }
+        '401': { $ref: '#/components/responses/ErroNaoAutenticado' }
+    post:
+      summary: Cadastrar veículo (H1.4)
+      description: >
+        Escolher o tipo + quantidade gera o layout padrão no servidor
+        (2 + corredor + 2; van tem layout próprio). O layout gerado volta na
+        resposta para render imediato do mapa.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VeiculoEntrada' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Veiculo' }
+        '409':
+          description: Placa já cadastrada na organização (codigo `placa_ja_cadastrada`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+        '422': { $ref: '#/components/responses/ErroValidacao' }
+
+  /veiculos/{veiculoId}:
+    parameters:
+      - { name: veiculoId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Detalhe do veículo
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Veiculo' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+    patch:
+      summary: Editar veículo (inclui bloquear/desbloquear poltronas)
+      description: >
+        Veículo vinculado a excursão publicada exige `confirmar: true` —
+        sem ela responde 409 `veiculo_em_uso_requer_confirmacao`. A edição
+        nunca corrompe reservas existentes: reduzir poltronas ou bloquear
+        poltrona com reserva ativa responde 409 `poltrona_com_reserva`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/VeiculoEntrada'
+                - type: object
+                  properties:
+                    poltronas_bloqueadas:
+                      type: array
+                      items: { type: integer, minimum: 1 }
+                    confirmar:
+                      type: boolean
+                      description: Obrigatório true quando há excursão publicada vinculada.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Veiculo' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+        '409':
+          description: >
+            `veiculo_em_uso_requer_confirmacao` | `poltrona_com_reserva` |
+            `placa_ja_cadastrada`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+        '422': { $ref: '#/components/responses/ErroValidacao' }
+    delete:
+      summary: Excluir veículo (soft delete)
+      description: >
+        Com excursão publicada vinculada exige query `confirmar=true`; sem
+        ela responde 409. Exclusão é lógica — reservas e excursões passadas
+        permanecem íntegras. Veículo com excursão FUTURA publicada não pode
+        ser excluído (409 `veiculo_com_excursao_futura`).
+      parameters:
+        - { name: confirmar, in: query, schema: { type: boolean, default: false } }
+      responses:
+        '204': { description: Excluído. }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+        '409':
+          description: '`veiculo_em_uso_requer_confirmacao` | `veiculo_com_excursao_futura`.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+  /veiculos/layout-padrao:
+    get:
+      summary: Pré-visualizar layout padrão por tipo e quantidade
+      description: Usado pelo formulário de cadastro antes de salvar.
+      parameters:
+        - name: tipo
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/TipoVeiculo' }
+        - name: quantidade_poltronas
+          in: query
+          required: true
+          schema: { type: integer, minimum: 15, maximum: 50 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Layout' }
+        '422': { $ref: '#/components/responses/ErroValidacao' }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  parameters:
+    Pagina:
+      name: pagina
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PorPagina:
+      name: por_pagina
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+
+  responses:
+    ErroNaoAutenticado:
+      description: Token ausente, inválido ou expirado (codigo `nao_autenticado`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+    ErroNaoEncontrado:
+      description: Recurso inexistente na organização atual (codigo `nao_encontrado`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+    ErroValidacao:
+      description: Corpo/parâmetros inválidos (codigo `validacao`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+
+  schemas:
+    Erro:
+      type: object
+      required: [erro]
+      properties:
+        erro:
+          type: object
+          required: [codigo, mensagem]
+          properties:
+            codigo: { type: string }
+            mensagem: { type: string }
+            detalhes: { type: object, additionalProperties: true }
+
+    Paginacao:
+      type: object
+      required: [pagina, por_pagina, total]
+      properties:
+        pagina: { type: integer }
+        por_pagina: { type: integer }
+        total: { type: integer }
+
+    TipoVeiculo:
+      type: string
+      enum: [van, micro_onibus, onibus]
+
+    Layout:
+      type: object
+      required: [fileiras]
+      properties:
+        fileiras:
+          type: array
+          description: Matriz de fileiras; null é corredor/vazio.
+          items:
+            type: array
+            items:
+              oneOf:
+                - { type: integer }
+                - { type: 'null' }
+
+    VeiculoEntrada:
+      type: object
+      required: [apelido, placa, tipo, quantidade_poltronas]
+      properties:
+        apelido: { type: string, maxLength: 60 }
+        placa: { type: string, maxLength: 10 }
+        tipo: { $ref: '#/components/schemas/TipoVeiculo' }
+        quantidade_poltronas:
+          type: integer
+          minimum: 15
+          maximum: 50
+          description: 'Faixas por tipo: van 15–16 · micro-ônibus 24–33 · ônibus 42–50 (validado no servidor).'
+
+    Veiculo:
+      type: object
+      required: [id, apelido, placa, tipo, quantidade_poltronas, capacidade, layout, poltronas_bloqueadas, criado_em]
+      properties:
+        id: { type: string, format: uuid }
+        apelido: { type: string }
+        placa: { type: string }
+        tipo: { $ref: '#/components/schemas/TipoVeiculo' }
+        quantidade_poltronas: { type: integer }
+        capacidade:
+          type: integer
+          description: DERIVADA = quantidade_poltronas − poltronas bloqueadas. Nunca armazenada.
+        layout: { $ref: '#/components/schemas/Layout' }
+        poltronas_bloqueadas:
+          type: array
+          items: { type: integer }
+        criado_em: { type: string, format: date-time }

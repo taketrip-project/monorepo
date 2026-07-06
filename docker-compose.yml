@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: taketrip-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: taketrip
+      POSTGRES_PASSWORD: taketrip
+      POSTGRES_DB: taketrip
+    ports:
+      - '5432:5432'
+    volumes:
+      - taketrip-postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U taketrip -d taketrip']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  taketrip-postgres-data:

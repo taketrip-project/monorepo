@@ -1,0 +1,29 @@
+node_modules/
+dist/
+build/
+coverage/
+
+# env
+.env
+.env.*
+!.env.example
+
+# logs
+npm-debug.log*
+*.log
+
+# editors/OS
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+
+# nest
+apps/api/dist/
+
+# vite
+apps/web/dist/
+apps/web/dist-ssr/
+
+# misc
+*.tsbuildinfo
+.pnpm-store/

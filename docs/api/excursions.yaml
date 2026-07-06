@@ -1,0 +1,501 @@
+openapi: 3.1.0
+info:
+  title: Taketrip API — Módulo excursions
+  version: 0.1.0
+  description: >
+    Excursão, ciclo de vida, pontos de embarque, fotos, checklist legal e
+    dashboard Início (H1.5–H1.7, H1.14, H3.4, H3.5). Rotas autenticadas e
+    escopadas na organização do JWT. A página pública vive em `publico.yaml`.
+    Vagas/pagos/pendentes dos cards são SEMPRE calculados no servidor.
+servers:
+  - url: /api/v1
+
+security:
+  - bearerAuth: []
+
+paths:
+  /excursoes:
+    get:
+      summary: Listar excursões em ordem cronológica com filtros (H1.7)
+      parameters:
+        - name: filtro
+          in: query
+          schema:
+            type: string
+            enum: [proximas, hoje, concluidas, rascunho]
+            default: proximas
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/PorPagina'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [dados, paginacao]
+                properties:
+                  dados:
+                    type: array
+                    items: { $ref: '#/components/schemas/ExcursaoCard' }
+                  paginacao: { $ref: '#/components/schemas/Paginacao' }
+        '401': { $ref: '#/components/responses/ErroNaoAutenticado' }
+    post:
+      summary: Criar excursão em rascunho (H1.5)
+      description: Nasce em `rascunho` — fora de listagens operacionais e sem página pública.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExcursaoEntrada' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Excursao' }
+        '404':
+          description: Veículo inexistente na organização (codigo `nao_encontrado`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+        '422': { $ref: '#/components/responses/ErroValidacao' }
+
+  /excursoes/{excursaoId}:
+    parameters:
+      - { name: excursaoId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Detalhe da excursão (inclui viabilidade calculada)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Excursao' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+    patch:
+      summary: Editar excursão
+      description: >
+        Campos monetários em centavos. Trocar de veículo com reservas ativas
+        em poltronas que não existem no novo veículo responde 409
+        `troca_veiculo_conflita_reservas`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/ExcursaoEntrada'
+                - type: object
+                  properties:
+                    custo_total_centavos:
+                      type: [integer, 'null']
+                      minimum: 0
+                      description: Viabilidade (H3.4) — informativo, nunca bloqueia.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Excursao' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+        '409':
+          description: '`troca_veiculo_conflita_reservas`.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+        '422': { $ref: '#/components/responses/ErroValidacao' }
+    delete:
+      summary: Excluir rascunho
+      description: Só excursão em `rascunho` pode ser excluída; publicada se cancela (409 `apenas_rascunho_exclui`).
+      responses:
+        '204': { description: Rascunho excluído. }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+        '409':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+  /excursoes/{excursaoId}/publicar:
+    post:
+      summary: Publicar excursão (H1.7)
+      description: >
+        Transição `rascunho → publicada`. Bloqueada sem ≥1 ponto de embarque
+        (409 `sem_ponto_embarque`, mensagem clara). Gera/ativa a página
+        pública em `codigo_publico`.
+      parameters:
+        - { name: excursaoId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Excursao' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+        '409':
+          description: '`sem_ponto_embarque` | `transicao_invalida`.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+  /excursoes/{excursaoId}/cancelar:
+    post:
+      summary: Cancelar excursão com motivo obrigatório (H1.7)
+      description: >
+        Permitido a partir de qualquer estado antes de `em_andamento`.
+        Reservas pagas geram pendência de estorno (estorno é manual, fora do
+        sistema). A resposta lista as pendências criadas.
+      parameters:
+        - { name: excursaoId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [motivo]
+              properties:
+                motivo: { type: string, minLength: 3, maxLength: 500 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [excursao, pendencias_estorno]
+                properties:
+                  excursao: { $ref: '#/components/schemas/Excursao' }
+                  pendencias_estorno:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, reserva_id, valor_centavos]
+                      properties:
+                        id: { type: string, format: uuid }
+                        reserva_id: { type: string, format: uuid }
+                        valor_centavos: { type: integer }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+        '409':
+          description: Já em andamento ou concluída (codigo `transicao_invalida`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+        '422': { $ref: '#/components/responses/ErroValidacao' }
+
+  /excursoes/{excursaoId}/pontos-embarque:
+    parameters:
+      - { name: excursaoId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Listar pontos na ordem do itinerário (H1.6)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PontoEmbarque' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+    post:
+      summary: Adicionar ponto de embarque
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PontoEmbarqueEntrada' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PontoEmbarque' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+        '422': { $ref: '#/components/responses/ErroValidacao' }
+    put:
+      summary: Reordenar pontos (lista completa de ids na nova ordem)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ordem]
+              properties:
+                ordem:
+                  type: array
+                  items: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PontoEmbarque' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+        '422': { $ref: '#/components/responses/ErroValidacao' }
+
+  /excursoes/{excursaoId}/pontos-embarque/{pontoId}:
+    parameters:
+      - { name: excursaoId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: pontoId, in: path, required: true, schema: { type: string, format: uuid } }
+    patch:
+      summary: Editar local/horário do ponto
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PontoEmbarqueEntrada' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PontoEmbarque' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+    delete:
+      summary: Remover ponto
+      description: >
+        Ponto com passageiros vinculados exige realocação prévia
+        (409 `ponto_com_passageiros`). Excursão publicada não pode ficar
+        com zero pontos (409 `ultimo_ponto`).
+      responses:
+        '204': { description: Removido. }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+        '409':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+  /excursoes/{excursaoId}/fotos:
+    parameters:
+      - { name: excursaoId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      summary: Enviar foto da excursão (S3)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [arquivo]
+              properties:
+                arquivo: { type: string, format: binary }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Foto' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+        '422':
+          description: Formato/tamanho inválido (codigo `arquivo_invalido`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+  /excursoes/{excursaoId}/fotos/{fotoId}:
+    delete:
+      summary: Remover foto
+      parameters:
+        - { name: excursaoId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: fotoId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Removida. }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+
+  /excursoes/{excursaoId}/checklist-legal:
+    patch:
+      summary: Atualizar checklist legal informativo (H3.5)
+      description: Informar, NUNCA bloquear — itens desmarcados não impedem nenhuma ação.
+      parameters:
+        - { name: excursaoId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                licenca_antt: { type: boolean }
+                seguro_passageiros: { type: boolean }
+                lista_impressa: { type: boolean }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChecklistLegal' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+
+  /inicio:
+    get:
+      summary: Dashboard mínimo — próxima excursão em um golpe de vista (H1.14)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [proxima_excursao]
+                properties:
+                  proxima_excursao:
+                    oneOf:
+                      - { $ref: '#/components/schemas/ExcursaoCard' }
+                      - { type: 'null' }
+        '401': { $ref: '#/components/responses/ErroNaoAutenticado' }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  parameters:
+    Pagina:
+      name: pagina
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PorPagina:
+      name: por_pagina
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+
+  responses:
+    ErroNaoAutenticado:
+      description: Token ausente, inválido ou expirado (codigo `nao_autenticado`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+    ErroNaoEncontrado:
+      description: Recurso inexistente na organização atual (codigo `nao_encontrado`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+    ErroValidacao:
+      description: Corpo/parâmetros inválidos (codigo `validacao`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+
+  schemas:
+    Erro:
+      type: object
+      required: [erro]
+      properties:
+        erro:
+          type: object
+          required: [codigo, mensagem]
+          properties:
+            codigo: { type: string }
+            mensagem: { type: string }
+            detalhes: { type: object, additionalProperties: true }
+
+    Paginacao:
+      type: object
+      required: [pagina, por_pagina, total]
+      properties:
+        pagina: { type: integer }
+        por_pagina: { type: integer }
+        total: { type: integer }
+
+    StatusExcursao:
+      type: string
+      enum: [rascunho, publicada, lotada, em_andamento, concluida, cancelada]
+
+    ExcursaoEntrada:
+      type: object
+      required: [destino, data_saida, data_retorno, tipo, veiculo_id, preco_centavos]
+      properties:
+        destino: { type: string, maxLength: 160 }
+        evento_ancora: { type: [string, 'null'], maxLength: 160 }
+        data_saida: { type: string, format: date-time }
+        data_retorno: { type: string, format: date-time }
+        tipo: { type: string, enum: [bate_volta, pernoite] }
+        veiculo_id: { type: string, format: uuid }
+        preco_centavos: { type: integer, minimum: 0 }
+        sinal_tipo: { type: string, enum: [percentual, fixo], default: percentual }
+        sinal_valor:
+          type: integer
+          minimum: 0
+          description: Percentual (0–100) ou centavos, conforme sinal_tipo. Default = sinal da organização (50%).
+        descricao: { type: [string, 'null'], maxLength: 4000 }
+
+    ChecklistLegal:
+      type: object
+      required: [licenca_antt, seguro_passageiros, lista_impressa]
+      properties:
+        licenca_antt: { type: boolean }
+        seguro_passageiros: { type: boolean }
+        lista_impressa: { type: boolean }
+
+    Viabilidade:
+      type: object
+      description: Indicador informativo (H3.4). Presente só quando custo_total_centavos informado.
+      required: [custo_total_centavos, ponto_equilibrio_pagos, pagos_atuais]
+      properties:
+        custo_total_centavos: { type: integer }
+        ponto_equilibrio_pagos:
+          type: integer
+          description: 'ceil(custo_total / preço). Ex.: "empata com 26 pagos".'
+        pagos_atuais: { type: integer }
+
+    ExcursaoCard:
+      type: object
+      description: Card de listagem (H1.7) — contadores calculados no servidor.
+      required: [id, status, destino, data_saida, tipo, vagas, capacidade, pagos, pendentes]
+      properties:
+        id: { type: string, format: uuid }
+        status: { $ref: '#/components/schemas/StatusExcursao' }
+        destino: { type: string }
+        evento_ancora: { type: [string, 'null'] }
+        data_saida: { type: string, format: date-time }
+        tipo: { type: string, enum: [bate_volta, pernoite] }
+        vagas: { type: integer, description: capacidade − reservas ativas (calculado). }
+        capacidade: { type: integer }
+        pagos: { type: integer }
+        pendentes: { type: integer }
+        foto_capa_url: { type: [string, 'null'] }
+
+    Excursao:
+      allOf:
+        - $ref: '#/components/schemas/ExcursaoCard'
+        - type: object
+          required: [data_retorno, preco_centavos, sinal_tipo, sinal_valor, codigo_publico, checklist_legal, criado_em]
+          properties:
+            data_retorno: { type: string, format: date-time }
+            preco_centavos: { type: integer }
+            sinal_tipo: { type: string, enum: [percentual, fixo] }
+            sinal_valor: { type: integer }
+            sinal_centavos:
+              type: integer
+              description: Valor do sinal RESOLVIDO em centavos (percentual aplicado com floor).
+            descricao: { type: [string, 'null'] }
+            veiculo_id: { type: string, format: uuid }
+            motivo_cancelamento: { type: [string, 'null'] }
+            codigo_publico: { type: string }
+            url_publica: { type: string, description: URL completa da página pública (H3.1). }
+            custo_total_centavos: { type: [integer, 'null'] }
+            viabilidade:
+              oneOf:
+                - { $ref: '#/components/schemas/Viabilidade' }
+                - { type: 'null' }
+            checklist_legal: { $ref: '#/components/schemas/ChecklistLegal' }
+            fotos:
+              type: array
+              items: { $ref: '#/components/schemas/Foto' }
+            pontos_embarque:
+              type: array
+              items: { $ref: '#/components/schemas/PontoEmbarque' }
+            criado_em: { type: string, format: date-time }
+
+    PontoEmbarqueEntrada:
+      type: object
+      required: [local, horario]
+      properties:
+        local: { type: string, maxLength: 200 }
+        horario: { type: string, format: date-time }
+
+    PontoEmbarque:
+      type: object
+      required: [id, local, horario, ordem]
+      properties:
+        id: { type: string, format: uuid }
+        local: { type: string }
+        horario: { type: string, format: date-time }
+        ordem: { type: integer }
+
+    Foto:
+      type: object
+      required: [id, url, ordem]
+      properties:
+        id: { type: string, format: uuid }
+        url: { type: string }
+        ordem: { type: integer }

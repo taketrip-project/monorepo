@@ -1,0 +1,385 @@
+openapi: 3.1.0
+info:
+  title: Taketrip API — Módulo identity
+  version: 0.1.0
+  description: >
+    Conta, organização (tenant), membros, convites e autenticação (H1.1–H1.3).
+    Contrato da fase 0 — o frontend consome ESTE contrato, não o código.
+    Autenticação: JWT Bearer de vida curta + refresh token rotativo (ADR 004).
+    Todas as rotas autenticadas operam no escopo da organização do JWT —
+    nenhum endpoint aceita organizacao_id vindo do cliente.
+servers:
+  - url: /api/v1
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/registro:
+    post:
+      summary: Criar conta e organização (H1.1)
+      description: >
+        PÚBLICO. Cadastro mínimo: nome, e-mail, senha e nome da organização.
+        Ao concluir, o tenant existe e o organizador sai autenticado.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nome, email, senha, nome_organizacao]
+              properties:
+                nome: { type: string, maxLength: 120 }
+                email: { type: string, format: email }
+                senha: { type: string, minLength: 8, maxLength: 128 }
+                nome_organizacao: { type: string, maxLength: 120 }
+      responses:
+        '201':
+          description: Conta e organização criadas; sessão iniciada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessaoIniciada' }
+        '409':
+          description: E-mail já cadastrado (codigo `email_ja_cadastrado`) — mensagem clara em pt-BR, sem revelar dados de terceiros.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+        '422': { $ref: '#/components/responses/ErroValidacao' }
+
+  /auth/login:
+    post:
+      summary: Entrar (H1.2)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, senha]
+              properties:
+                email: { type: string, format: email }
+                senha: { type: string }
+      responses:
+        '200':
+          description: Autenticado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessaoIniciada' }
+        '401':
+          description: Credenciais inválidas (codigo `credenciais_invalidas`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+        '429':
+          description: >
+            Espera progressiva após 5 tentativas erradas seguidas
+            (codigo `muitas_tentativas`; header Retry-After em segundos).
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+  /auth/refresh:
+    post:
+      summary: Renovar sessão (refresh token rotativo)
+      description: >
+        PÚBLICO (autentica pelo refresh token no corpo). Rotação: o refresh
+        usado é revogado e um novo é emitido. Sessão persiste ao fechar e
+        reabrir o navegador (H1.2).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string }
+      responses:
+        '200':
+          description: Novos tokens.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tokens' }
+        '401':
+          description: Refresh inválido, expirado ou revogado (codigo `sessao_invalida`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+  /auth/logout:
+    post:
+      summary: Sair (revoga a sessão atual)
+      responses:
+        '204': { description: Sessão revogada. }
+        '401': { $ref: '#/components/responses/ErroNaoAutenticado' }
+
+  /auth/esqueci-senha:
+    post:
+      summary: Solicitar redefinição de senha (H1.2)
+      description: >
+        PÚBLICO. Envia e-mail (SES) com link que expira e só funciona uma vez.
+        Responde 202 SEMPRE (inclusive para e-mail inexistente) — não revela
+        se o e-mail está cadastrado.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '202': { description: Se o e-mail existir, a mensagem foi enviada. }
+
+  /auth/redefinir-senha:
+    post:
+      summary: Redefinir senha com token do e-mail (H1.2)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, nova_senha]
+              properties:
+                token: { type: string }
+                nova_senha: { type: string, minLength: 8, maxLength: 128 }
+      responses:
+        '204': { description: Senha redefinida; todas as sessões anteriores são revogadas. }
+        '401':
+          description: Token inválido, expirado ou já usado (codigo `token_invalido`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+        '422': { $ref: '#/components/responses/ErroValidacao' }
+
+  /auth/convites/aceitar:
+    post:
+      summary: Aceitar convite e criar acesso (H1.3)
+      description: >
+        PÚBLICO (autentica pelo token do convite). O convidado cria a senha
+        e entra na MESMA organização de quem convidou.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, nome, senha]
+              properties:
+                token: { type: string }
+                nome: { type: string, maxLength: 120 }
+                senha: { type: string, minLength: 8, maxLength: 128 }
+      responses:
+        '201':
+          description: Membro criado e autenticado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessaoIniciada' }
+        '401':
+          description: Convite inválido, expirado ou já aceito (codigo `convite_invalido`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+        '409':
+          description: E-mail do convite já possui conta (codigo `email_ja_cadastrado`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+  /organizacao:
+    get:
+      summary: Dados e configurações da organização atual
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Organizacao' }
+        '401': { $ref: '#/components/responses/ErroNaoAutenticado' }
+    patch:
+      summary: Atualizar organização (nome, prazo de expiração, sinal default)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nome: { type: string, maxLength: 120 }
+                prazo_expiracao_reserva_horas: { type: integer, minimum: 1, maximum: 720 }
+                sinal_default_percentual: { type: integer, minimum: 0, maximum: 100 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Organizacao' }
+        '401': { $ref: '#/components/responses/ErroNaoAutenticado' }
+        '422': { $ref: '#/components/responses/ErroValidacao' }
+
+  /organizacao/membros:
+    get:
+      summary: Listar membros da organização
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Membro' }
+        '401': { $ref: '#/components/responses/ErroNaoAutenticado' }
+
+  /organizacao/membros/{membroId}:
+    delete:
+      summary: Remover membro (H1.3)
+      description: Revoga TODAS as sessões do membro imediatamente.
+      parameters:
+        - { name: membroId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Removido e sessões invalidadas. }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+        '409':
+          description: Não é possível remover o último membro (codigo `ultimo_membro`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+  /organizacao/convites:
+    get:
+      summary: Listar convites pendentes
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Convite' }
+    post:
+      summary: Convidar colega por e-mail (H1.3)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Convite' }
+        '409':
+          description: >
+            Limite de membros do MVP atingido (codigo `limite_membros`, máx. 3
+            incluindo o dono) ou convite pendente já existe (codigo
+            `convite_ja_existe`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+  /organizacao/convites/{conviteId}:
+    delete:
+      summary: Cancelar convite pendente
+      parameters:
+        - { name: conviteId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Convite cancelado. }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    ErroNaoAutenticado:
+      description: Token ausente, inválido ou expirado (codigo `nao_autenticado`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+    ErroNaoEncontrado:
+      description: Recurso inexistente NA ORGANIZAÇÃO ATUAL (codigo `nao_encontrado`) — id de outro tenant também responde 404, nunca 403.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+    ErroValidacao:
+      description: Corpo inválido (codigo `validacao`; detalhes.campos lista os erros por campo em pt-BR).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+
+  schemas:
+    Erro:
+      type: object
+      description: Formato ÚNICO de erro de toda a API Taketrip.
+      required: [erro]
+      properties:
+        erro:
+          type: object
+          required: [codigo, mensagem]
+          properties:
+            codigo:
+              type: string
+              description: Código estável em snake_case (ex. `poltrona_ocupada`).
+            mensagem:
+              type: string
+              description: Mensagem pt-BR informal, pronta para exibir.
+            detalhes:
+              type: object
+              additionalProperties: true
+
+    Tokens:
+      type: object
+      required: [access_token, refresh_token, expira_em_segundos]
+      properties:
+        access_token: { type: string, description: JWT de vida curta (15 min). }
+        refresh_token: { type: string, description: Opaco, rotativo, vida de 30 dias. }
+        expira_em_segundos: { type: integer }
+
+    SessaoIniciada:
+      type: object
+      required: [tokens, membro, organizacao]
+      properties:
+        tokens: { $ref: '#/components/schemas/Tokens' }
+        membro: { $ref: '#/components/schemas/Membro' }
+        organizacao: { $ref: '#/components/schemas/Organizacao' }
+
+    Organizacao:
+      type: object
+      required: [id, nome, prazo_expiracao_reserva_horas, sinal_default_percentual, criado_em]
+      properties:
+        id: { type: string, format: uuid }
+        nome: { type: string }
+        prazo_expiracao_reserva_horas: { type: integer }
+        sinal_default_percentual: { type: integer }
+        criado_em: { type: string, format: date-time }
+
+    Membro:
+      type: object
+      required: [id, nome, email, criado_em]
+      properties:
+        id: { type: string, format: uuid }
+        nome: { type: string }
+        email: { type: string, format: email }
+        criado_em: { type: string, format: date-time }
+
+    Convite:
+      type: object
+      required: [id, email, expira_em, criado_em]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        expira_em: { type: string, format: date-time }
+        criado_em: { type: string, format: date-time }

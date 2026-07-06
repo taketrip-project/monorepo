@@ -1,0 +1,397 @@
+openapi: 3.1.0
+info:
+  title: Taketrip API — Módulo billing (+ mensagens prontas de notifications)
+  version: 0.1.0
+  description: >
+    Cobrança PIX, aba Pagto, conciliação, alertas e mensagens prontas de
+    WhatsApp (H2.1–H2.7). CONTRATO desenhado pelo backend-architect;
+    IMPLEMENTAÇÃO exclusiva do billing-specialist. O webhook PIX (público)
+    está em `publico.yaml`. Billing é ADITIVO: sem configuração PIX ativa o
+    app opera 100% no modo manual da fase 1. Valores sempre em centavos.
+    GATE: nada disto é implementado antes da aprovação humana do provedor
+    (ADR 005).
+servers:
+  - url: /api/v1
+
+security:
+  - bearerAuth: []
+
+paths:
+  /configuracao-pix:
+    get:
+      summary: Configuração PIX da organização (H2.1)
+      responses:
+        '200':
+          description: Credenciais NUNCA retornam em claro — só um indicador de presença.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConfiguracaoPix' }
+        '404':
+          description: PIX ainda não configurado (codigo `nao_encontrado`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+    put:
+      summary: Criar/atualizar configuração PIX
+      description: Valida as credenciais contra o provedor antes de ativar.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provedor, chave_pix, credenciais]
+              properties:
+                provedor: { type: string, enum: [mercado_pago, efi, asaas] }
+                chave_pix: { type: string }
+                credenciais:
+                  type: object
+                  description: Formato específico do provedor; cifradas na aplicação antes de persistir.
+                  additionalProperties: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConfiguracaoPix' }
+        '422':
+          description: Credenciais rejeitadas pelo provedor (codigo `credenciais_pix_invalidas`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+  /reservas/{reservaId}/cobrancas:
+    parameters:
+      - { name: reservaId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Cobranças da reserva (rastreio do txid na ficha — H2.2)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Cobranca' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+    post:
+      summary: Gerar cobrança PIX em UMA ação (H2.2)
+      description: >
+        Cria cob dinâmica no provedor e retorna QR + copia-e-cola + mensagem
+        pronta com deep-link wa.me. Sinal com arredondamento floor; `restante`
+        fecha o total exato. Expiração alinhada ao prazo da organização.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tipo]
+              properties:
+                tipo: { type: string, enum: [sinal, integral, restante] }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CobrancaCriada' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+        '409':
+          description: >
+            `pix_nao_configurado` | `cobranca_pendente_ja_existe` (mesma
+            reserva e tipo) | `tipo_incompativel` (ex.: restante sem
+            sinal_pago) | `reserva_nao_ativa`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+        '502':
+          description: Provedor PIX indisponível (codigo `provedor_indisponivel`) — nada foi criado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+  /cobrancas/{cobrancaId}/cancelar:
+    post:
+      summary: Cancelar cobrança pendente
+      parameters:
+        - { name: cobrancaId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cobranca' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+        '409':
+          description: Cobrança já paga/expirada (codigo `transicao_invalida`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+  /pagamentos/pendentes:
+    get:
+      summary: Aba Pagto — pendentes em destaque (H2.5)
+      description: >
+        Pendentes primeiro, ordenados por proximidade da data da excursão.
+        Cada linha traz valor devido (sinal/restante/integral) e há quanto
+        tempo está pendente.
+      parameters:
+        - { name: excursao_id, in: query, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/PorPagina'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [dados, paginacao]
+                properties:
+                  dados:
+                    type: array
+                    items: { $ref: '#/components/schemas/PagamentoPendente' }
+                  paginacao: { $ref: '#/components/schemas/Paginacao' }
+        '401': { $ref: '#/components/responses/ErroNaoAutenticado' }
+
+  /excursoes/{excursaoId}/cobranca-em-lote:
+    get:
+      summary: Cobrar todos os pendentes de uma excursão (H2.5)
+      description: >
+        Retorna a sequência de mensagens prontas (um deep-link wa.me por
+        passageiro pendente) — o organizador dispara uma a uma sem digitar
+        nada. NÃO cria cobranças novas: reusa a pendente de cada reserva ou
+        indica que precisa gerar.
+      parameters:
+        - { name: excursaoId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [reserva_id, passageiro_nome, tem_cobranca]
+                  properties:
+                    reserva_id: { type: string, format: uuid }
+                    passageiro_nome: { type: string }
+                    tem_cobranca: { type: boolean }
+                    mensagem:
+                      oneOf:
+                        - { $ref: '#/components/schemas/MensagemWhatsApp' }
+                        - { type: 'null' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+
+  /excursoes/{excursaoId}/conciliacao:
+    get:
+      summary: Conciliação por excursão (H2.6)
+      description: >
+        Total previsto × confirmado × pendente + divergências destacadas,
+        cada uma com link direto (reserva/cobrança envolvida). Alimentada
+        pelo job diário de conciliação (cron) e pelo estado local.
+      parameters:
+        - { name: excursaoId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Conciliacao' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+
+  /alertas:
+    get:
+      summary: Alertas operacionais de dinheiro (H2.4, H2.6)
+      description: PIX pós-expiração sem vaga, txid desconhecido, divergência de conciliação.
+      parameters:
+        - { name: resolvidos, in: query, schema: { type: boolean, default: false } }
+        - $ref: '#/components/parameters/Pagina'
+        - $ref: '#/components/parameters/PorPagina'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [dados, paginacao]
+                properties:
+                  dados:
+                    type: array
+                    items: { $ref: '#/components/schemas/Alerta' }
+                  paginacao: { $ref: '#/components/schemas/Paginacao' }
+
+  /alertas/{alertaId}/resolver:
+    post:
+      summary: Marcar alerta como resolvido
+      parameters:
+        - { name: alertaId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Alerta' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+
+  /reservas/{reservaId}/mensagem-whatsapp:
+    get:
+      summary: Mensagem pronta de WhatsApp por momento-chave (H2.7 — notifications)
+      description: >
+        Deep-link `wa.me` com texto pré-preenchido, pt-BR informal, valores
+        em R$ 0,00, datas "Dom · 15 jun". SEM API oficial do WhatsApp no MVP.
+        Templates vivem em código (módulo notifications) — não há tabela.
+      parameters:
+        - { name: reservaId, in: path, required: true, schema: { type: string, format: uuid } }
+        - name: tipo
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [cobranca_sinal, cobranca_restante, cobranca_integral, confirmacao_pagamento, lembrete_embarque]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MensagemWhatsApp' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+        '409':
+          description: Tipo incompatível com o estado da reserva (codigo `tipo_incompativel`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  parameters:
+    Pagina:
+      name: pagina
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PorPagina:
+      name: por_pagina
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+
+  responses:
+    ErroNaoAutenticado:
+      description: Token ausente, inválido ou expirado (codigo `nao_autenticado`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+    ErroNaoEncontrado:
+      description: Recurso inexistente na organização atual (codigo `nao_encontrado`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+
+  schemas:
+    Erro:
+      type: object
+      required: [erro]
+      properties:
+        erro:
+          type: object
+          required: [codigo, mensagem]
+          properties:
+            codigo: { type: string }
+            mensagem: { type: string }
+            detalhes: { type: object, additionalProperties: true }
+
+    Paginacao:
+      type: object
+      required: [pagina, por_pagina, total]
+      properties:
+        pagina: { type: integer }
+        por_pagina: { type: integer }
+        total: { type: integer }
+
+    ConfiguracaoPix:
+      type: object
+      required: [provedor, chave_pix, ativo, credenciais_configuradas]
+      properties:
+        provedor: { type: string, enum: [mercado_pago, efi, asaas] }
+        chave_pix: { type: string }
+        ativo: { type: boolean }
+        credenciais_configuradas:
+          type: boolean
+          description: Indica presença — as credenciais em si NUNCA retornam.
+
+    Cobranca:
+      type: object
+      required: [id, reserva_id, tipo, valor_centavos, status, txid, expira_em, criado_em]
+      properties:
+        id: { type: string, format: uuid }
+        reserva_id: { type: string, format: uuid }
+        tipo: { type: string, enum: [sinal, integral, restante] }
+        valor_centavos: { type: integer }
+        status: { type: string, enum: [pendente, paga, expirada, cancelada] }
+        txid: { type: string }
+        copia_e_cola: { type: string }
+        expira_em: { type: string, format: date-time }
+        paga_em: { type: [string, 'null'], format: date-time }
+        criado_em: { type: string, format: date-time }
+
+    CobrancaCriada:
+      allOf:
+        - $ref: '#/components/schemas/Cobranca'
+        - type: object
+          required: [qr_code_base64, mensagem_whatsapp]
+          properties:
+            qr_code_base64:
+              type: string
+              description: PNG do QR Code em base64, pronto para exibir.
+            mensagem_whatsapp: { $ref: '#/components/schemas/MensagemWhatsApp' }
+
+    MensagemWhatsApp:
+      type: object
+      required: [texto, link_wa_me]
+      properties:
+        texto: { type: string, description: Mensagem pt-BR informal já interpolada. }
+        link_wa_me:
+          type: string
+          description: 'https://wa.me/55<numero>?text=<urlencode(texto)>'
+
+    PagamentoPendente:
+      type: object
+      required: [reserva_id, passageiro_nome, excursao_id, excursao_destino, excursao_data_saida, tipo_devido, valor_devido_centavos, pendente_desde]
+      properties:
+        reserva_id: { type: string, format: uuid }
+        passageiro_nome: { type: string }
+        passageiro_whatsapp: { type: string }
+        excursao_id: { type: string, format: uuid }
+        excursao_destino: { type: string }
+        excursao_data_saida: { type: string, format: date-time }
+        tipo_devido: { type: string, enum: [sinal, restante, integral] }
+        valor_devido_centavos: { type: integer }
+        pendente_desde: { type: string, format: date-time }
+
+    Conciliacao:
+      type: object
+      required: [excursao_id, previsto_centavos, confirmado_centavos, pendente_centavos, divergencias]
+      properties:
+        excursao_id: { type: string, format: uuid }
+        previsto_centavos: { type: integer, description: Soma dos valores das reservas ativas. }
+        confirmado_centavos: { type: integer, description: Soma das cobranças pagas + marcações manuais. }
+        pendente_centavos: { type: integer }
+        divergencias:
+          type: array
+          items:
+            type: object
+            required: [tipo, descricao]
+            properties:
+              tipo:
+                type: string
+                enum: [cobranca_paga_sem_reserva_ativa, valor_divergente, pagamento_nao_conciliado]
+              descricao: { type: string }
+              reserva_id: { type: [string, 'null'], format: uuid }
+              cobranca_id: { type: [string, 'null'], format: uuid }
+
+    Alerta:
+      type: object
+      required: [id, tipo, criado_em]
+      properties:
+        id: { type: string, format: uuid }
+        tipo:
+          type: string
+          enum: [pix_pos_expiracao_sem_vaga, txid_desconhecido, divergencia_conciliacao]
+        cobranca_id: { type: [string, 'null'], format: uuid }
+        reserva_id: { type: [string, 'null'], format: uuid }
+        detalhes: { type: [object, 'null'], additionalProperties: true }
+        resolvido_em: { type: [string, 'null'], format: date-time }
+        criado_em: { type: string, format: date-time }

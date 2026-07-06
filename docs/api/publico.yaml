@@ -1,0 +1,289 @@
+openapi: 3.1.0
+info:
+  title: Taketrip API — Endpoints PÚBLICOS
+  version: 0.1.0
+  description: >
+    TODOS os endpoints deste arquivo são PÚBLICOS (sem JWT) e anotados com
+    @Public() no NestJS — cada um é revisado individualmente (skill
+    multi-tenancy). São as ÚNICAS exceções ao escopo por organização:
+    a página da excursão (H3.1), a reserva do passageiro (H3.2) e o webhook
+    PIX (H2.3). Nenhuma resposta expõe dado de passageiro de terceiros.
+    Rate limiting por IP em todos.
+servers:
+  - url: /api/v1
+
+paths:
+  /publico/excursoes/{codigo}:
+    get:
+      summary: Página pública da excursão (H3.1) — PÚBLICO
+      description: >
+        Lookup por `codigo_publico` (curto, não sequencial — não expõe UUID
+        interno). Só excursão `publicada`/`lotada` responde 200; rascunho,
+        cancelada, em andamento ou concluída respondem 404 "indisponível".
+        Sem NENHUM dado de passageiro. Cabeçalhos de cache curtos (60s) para
+        abrir rápido em 4G; metadados OpenGraph (título + imagem) são
+        renderizados pelo frontend com estes dados.
+      security: []
+      parameters:
+        - { name: codigo, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExcursaoPublica' }
+        '404':
+          description: Excursão indisponível (codigo `excursao_indisponivel`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+  /publico/excursoes/{codigo}/mapa-poltronas:
+    get:
+      summary: Mapa de poltronas público (H3.2) — PÚBLICO
+      description: >
+        Estados REDUZIDOS: livre · ocupada · bloqueada. O público NUNCA vê
+        pendente/pago nem nome de passageiro — só o que precisa para escolher
+        poltrona livre.
+      security: []
+      parameters:
+        - { name: codigo, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MapaPoltronasPublico' }
+        '404':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+  /publico/excursoes/{codigo}/reservas:
+    post:
+      summary: Reserva do passageiro pelo link (H3.2) — PÚBLICO
+      description: >
+        Zero conta, zero senha: poltrona + nome + WhatsApp (CPF opcional) +
+        escolha sinal/integral. A reserva nasce `pendente` com origem
+        `pagina_publica` e segue EXATAMENTE as mesmas regras de poltrona
+        única (UNIQUE no banco) e expiração das reservas do organizador.
+        Retorna a cobrança PIX e instruções com prazo em linguagem humana.
+        Com PIX não configurado pela organização, a reserva é criada e as
+        instruções orientam a combinar o pagamento com o organizador.
+      security: []
+      parameters:
+        - { name: codigo, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [poltrona, nome, whatsapp, tipo_pagamento]
+              properties:
+                poltrona: { type: integer, minimum: 1 }
+                nome: { type: string, maxLength: 120 }
+                whatsapp: { type: string }
+                cpf: { type: [string, 'null'] }
+                tipo_pagamento: { type: string, enum: [sinal, integral] }
+                ponto_embarque_id: { type: [string, 'null'], format: uuid }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReservaPublicaCriada' }
+        '404':
+          description: Excursão indisponível (codigo `excursao_indisponivel`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+        '409':
+          description: >
+            `poltrona_ocupada` (constraint no banco; detalhes.poltronas_livres
+            sugere alternativas) | `excursao_lotada` (reserva desabilitada na
+            hora) | `poltrona_bloqueada`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+        '422':
+          description: Dados inválidos (codigo `validacao`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+        '429':
+          description: Rate limit por IP (codigo `muitas_tentativas`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+  /publico/reservas/{reservaId}:
+    get:
+      summary: Situação da reserva para o passageiro — PÚBLICO
+      description: >
+        O UUID v7 da reserva funciona como capability (não enumerável; só
+        quem reservou recebeu o link). Retorna o MÍNIMO: status, poltrona,
+        prazo e instruções de pagamento. Usado pela tela de confirmação
+        (polling curto até o webhook confirmar).
+      security: []
+      parameters:
+        - { name: reservaId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SituacaoReservaPublica' }
+        '404':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+  /webhooks/pix/{provedor}:
+    post:
+      summary: Webhook PIX do provedor (H2.3) — PÚBLICO, processado pelo billing
+      description: >
+        Fluxo (skill pix-cobranca): valida assinatura/origem → grava evento
+        BRUTO (`webhook_evento`) → processa idempotente por estado-alvo.
+        Idempotência: o mesmo evento entregue 2+ vezes produz exatamente 1
+        mudança de estado (UNIQUE no id do evento do provedor).
+        txid desconhecido: registra + alerta e responde 200 (não fazer o
+        provedor re-tentar para sempre). Assinatura inválida: 401, registrado,
+        NUNCA altera estado. Falha de processamento não perde o evento —
+        cron de reprocessamento (sem SQS).
+      security: []
+      parameters:
+        - name: provedor
+          in: path
+          required: true
+          schema: { type: string, enum: [mercado_pago, efi, asaas] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Payload bruto do provedor — gravado como recebido.
+              additionalProperties: true
+      responses:
+        '200':
+          description: Evento aceito (inclusive txid desconhecido).
+        '401':
+          description: Assinatura/origem inválida — rejeitado e registrado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+components:
+  schemas:
+    Erro:
+      type: object
+      required: [erro]
+      properties:
+        erro:
+          type: object
+          required: [codigo, mensagem]
+          properties:
+            codigo: { type: string }
+            mensagem: { type: string }
+            detalhes: { type: object, additionalProperties: true }
+
+    ExcursaoPublica:
+      type: object
+      description: Tudo que o passageiro precisa — e NADA de outros passageiros.
+      required: [codigo, destino, data_saida, data_retorno, tipo, preco_centavos, sinal_centavos, vagas_restantes, aceita_reserva, pontos_embarque]
+      properties:
+        codigo: { type: string }
+        destino: { type: string }
+        evento_ancora: { type: [string, 'null'] }
+        data_saida: { type: string, format: date-time }
+        data_retorno: { type: string, format: date-time }
+        tipo: { type: string, enum: [bate_volta, pernoite] }
+        preco_centavos: { type: integer }
+        sinal_centavos: { type: integer, description: Valor do sinal resolvido em centavos. }
+        descricao: { type: [string, 'null'] }
+        fotos:
+          type: array
+          items: { type: string, description: URL da foto. }
+        vagas_restantes: { type: integer, description: Calculado — capacidade − reservas ativas. }
+        aceita_reserva:
+          type: boolean
+          description: false quando lotada — desabilita a reserva na hora (H3.2).
+        organizacao_nome: { type: string }
+        pontos_embarque:
+          type: array
+          items:
+            type: object
+            required: [local, horario, ordem]
+            properties:
+              local: { type: string }
+              horario: { type: string, format: date-time }
+              ordem: { type: integer }
+
+    MapaPoltronasPublico:
+      type: object
+      required: [layout, poltronas]
+      properties:
+        layout:
+          type: object
+          required: [fileiras]
+          properties:
+            fileiras:
+              type: array
+              items:
+                type: array
+                items:
+                  oneOf: [{ type: integer }, { type: 'null' }]
+        poltronas:
+          type: array
+          items:
+            type: object
+            required: [numero, estado]
+            properties:
+              numero: { type: integer }
+              estado:
+                type: string
+                enum: [livre, ocupada, bloqueada]
+                description: Estados reduzidos — sem pendente/pago, sem nomes.
+
+    CobrancaPublica:
+      type: object
+      required: [valor_centavos, tipo, copia_e_cola, qr_code_base64, expira_em]
+      properties:
+        valor_centavos: { type: integer }
+        tipo: { type: string, enum: [sinal, integral] }
+        copia_e_cola: { type: string }
+        qr_code_base64: { type: string }
+        expira_em: { type: string, format: date-time }
+
+    ReservaPublicaCriada:
+      type: object
+      required: [reserva_id, poltrona, status_pagamento, expira_em, instrucoes]
+      properties:
+        reserva_id:
+          type: string
+          format: uuid
+          description: Guarde — é o link de acompanhamento do passageiro.
+        poltrona: { type: integer }
+        status_pagamento: { type: string, enum: [pendente] }
+        expira_em: { type: [string, 'null'], format: date-time }
+        cobranca:
+          oneOf:
+            - { $ref: '#/components/schemas/CobrancaPublica' }
+            - { type: 'null' }
+        instrucoes:
+          type: string
+          description: 'Prazo em linguagem humana, pt-BR informal. Ex.: "Sua poltrona tá guardada até sábado às 18h — é só pagar o sinal pra confirmar."'
+
+    SituacaoReservaPublica:
+      type: object
+      required: [reserva_id, poltrona, status, status_pagamento, destino, data_saida]
+      properties:
+        reserva_id: { type: string, format: uuid }
+        poltrona: { type: integer }
+        status: { type: string, enum: [ativa, embarcada, expirada, cancelada] }
+        status_pagamento: { type: string, enum: [pendente, sinal_pago, pago, cancelado] }
+        destino: { type: string }
+        data_saida: { type: string, format: date-time }
+        expira_em: { type: [string, 'null'], format: date-time }
+        cobranca:
+          oneOf:
+            - { $ref: '#/components/schemas/CobrancaPublica' }
+            - { type: 'null' }
+        instrucoes: { type: [string, 'null'] }
