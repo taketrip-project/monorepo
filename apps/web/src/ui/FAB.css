@@ -1,0 +1,36 @@
+.tt-fab {
+  position: fixed;
+  right: 16px;
+  bottom: 92px;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tt-space-8);
+  height: 48px;
+  padding: 0 var(--tt-space-20);
+  border: none;
+  border-radius: var(--tt-r-pill);
+  background: var(--tt-primary);
+  color: #fff;
+  font-family: var(--tt-font);
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: var(--tt-shadow-primary);
+  cursor: pointer;
+  transition:
+    background-color var(--tt-motion-fast) var(--tt-ease),
+    transform var(--tt-motion-fast) var(--tt-ease);
+}
+
+.tt-fab:hover {
+  background: var(--tt-primary-press);
+}
+
+.tt-fab:active {
+  transform: scale(0.98);
+}
+
+.tt-fab-icon {
+  font-size: 16px;
+  line-height: 1;
+}

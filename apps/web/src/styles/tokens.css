@@ -1,0 +1,74 @@
+/*
+ * Design tokens do Taketrip — fonte de verdade: frontend-guidelines.md
+ * (raiz do repo) e .claude/skills/design-system-taketrip/SKILL.md.
+ * Não inventar cor/token fora daqui.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Superfície */
+  --tt-bg: #fffaf5; /* off-white quente (background do app) — nunca #fff puro */
+  --tt-surface: #ffffff; /* cards, sheets */
+  --tt-surface-2: #faf6f1; /* superfície secundária, hover */
+  --tt-border: #ece7e0; /* divisores, contornos padrão */
+  --tt-border-soft: #f3efe9; /* divisores internos sutis */
+
+  /* Texto (cinzas-pedra, quentes) */
+  --tt-ink: #1c1917; /* texto primário */
+  --tt-ink-mute: #57534e; /* texto secundário — também usado p/ informativo (proibido azul) */
+  --tt-ink-soft: #a8a29e; /* labels, legendas, ícones */
+  --tt-ink-faint: #d6d3d1; /* chevrons, hairlines */
+
+  /* Marca */
+  --tt-primary: #ea580c; /* laranja-âmbar — ação primária */
+  --tt-primary-press: #c2410c; /* pressed/active */
+  --tt-primary-soft: #fff1e3; /* fundo de chips, badges primary */
+  --tt-accent: #fde68a; /* destaque sutil */
+  --tt-accent-ink: #78350f; /* texto sobre accent */
+
+  /* Status — sempre cor + ícone/texto, nunca só cor */
+  --tt-success: #15803d;
+  --tt-success-soft: #e6f4ea;
+  --tt-warning: #b45309;
+  --tt-warning-soft: #fef3c7;
+  --tt-danger: #b91c1c;
+  --tt-danger-soft: #fde8e7;
+
+  /* Tipografia */
+  --tt-font: 'Trip Sans', sans-serif;
+  --tt-mono: 'Trip Sans Mono', monospace;
+
+  /* Raio */
+  --tt-r-sm: 6px; /* badges, chips */
+  --tt-r-md: 8px; /* botões, inputs, cards — default */
+  --tt-r-lg: 12px; /* modais, sheets, hero blocks */
+  --tt-r-pill: 999px; /* tags de status, FAB, filter chips */
+
+  /* Espaçamento (múltiplos de 4) */
+  --tt-space-4: 4px;
+  --tt-space-8: 8px;
+  --tt-space-12: 12px;
+  --tt-space-16: 16px;
+  --tt-space-20: 20px;
+  --tt-space-24: 24px;
+  --tt-space-32: 32px;
+  --tt-space-48: 48px;
+  --tt-space-64: 64px;
+
+  /* Motion — sem bounce, sem scale em listas */
+  --tt-motion-fast: 120ms;
+  --tt-motion-base: 180ms;
+  --tt-motion-flow: 240ms;
+  --tt-motion-settle: 320ms;
+  --tt-ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --tt-ease-settle: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Elevação — parcimoniosa; maioria das superfícies separa por borda */
+  --tt-shadow-float: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.06);
+  --tt-shadow-primary: 0 4px 16px rgba(234, 88, 12, 0.35), 0 2px 4px rgba(234, 88, 12, 0.2);
+  --tt-shadow-sticky: 0 8px 24px rgba(0, 0, 0, 0.18);
+
+  /* Alvo de toque mínimo */
+  --tt-tap-min: 48px;
+}

@@ -1,0 +1,61 @@
+.tt-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(28, 25, 23, 0.4);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 40;
+  animation: tt-sheet-fade var(--tt-motion-flow) var(--tt-ease);
+}
+
+.tt-sheet {
+  width: 100%;
+  max-width: 480px;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--tt-surface);
+  border-top-left-radius: var(--tt-r-lg);
+  border-top-right-radius: var(--tt-r-lg);
+  box-shadow: var(--tt-shadow-float);
+  animation: tt-sheet-up var(--tt-motion-settle) var(--tt-ease-settle);
+}
+
+.tt-sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--tt-ink-faint);
+  margin: 10px auto;
+}
+
+.tt-sheet-title {
+  padding: 0 var(--tt-space-16) var(--tt-space-16);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--tt-ink);
+}
+
+.tt-sheet-body {
+  padding: 0 var(--tt-space-16) var(--tt-space-24);
+}
+
+@keyframes tt-sheet-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes tt-sheet-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

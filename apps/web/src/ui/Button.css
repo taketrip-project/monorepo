@@ -1,0 +1,89 @@
+.tt-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--tt-space-8);
+  border: none;
+  border-radius: var(--tt-r-md);
+  font-family: var(--tt-font);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color var(--tt-motion-fast) var(--tt-ease),
+    transform var(--tt-motion-fast) var(--tt-ease),
+    opacity var(--tt-motion-fast) var(--tt-ease);
+  white-space: nowrap;
+}
+
+.tt-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.tt-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.tt-button--full {
+  width: 100%;
+}
+
+/* Tamanhos — alvo de toque mínimo 48px; botão primário de formulário 56px */
+.tt-button--sm {
+  height: 36px;
+  padding: 0 var(--tt-space-16);
+  font-size: 13px;
+}
+
+.tt-button--md {
+  height: 48px;
+  padding: 0 var(--tt-space-20);
+  font-size: 14px;
+}
+
+.tt-button--lg {
+  height: 56px;
+  padding: 0 var(--tt-space-24);
+  font-size: 16px;
+}
+
+/* Variantes */
+.tt-button--primary {
+  background: var(--tt-primary);
+  color: #fff;
+}
+.tt-button--primary:hover:not(:disabled) {
+  background: var(--tt-primary-press);
+}
+
+.tt-button--secondary {
+  background: var(--tt-surface);
+  border: 1px solid var(--tt-border);
+  color: var(--tt-ink);
+}
+.tt-button--secondary:hover:not(:disabled) {
+  background: var(--tt-surface-2);
+}
+
+.tt-button--soft {
+  background: var(--tt-primary-soft);
+  color: var(--tt-primary-press);
+}
+
+.tt-button--ghost {
+  background: transparent;
+  color: var(--tt-ink);
+}
+.tt-button--ghost:hover:not(:disabled) {
+  background: var(--tt-surface-2);
+}
+
+.tt-button--danger {
+  background: var(--tt-danger);
+  color: #fff;
+}
+
+.tt-button--success {
+  background: var(--tt-success);
+  color: #fff;
+}

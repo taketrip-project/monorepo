@@ -1,14 +1,24 @@
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { ProtectedRoute } from './app/ProtectedRoute';
+import { LoginPlaceholder } from './app/LoginPlaceholder';
+import { HomePlaceholder } from './app/HomePlaceholder';
+
 /**
- * Placeholder do bootstrap (item 1.0). As telas reais (Início, Excursões,
- * Pagto, Mais) chegam com a implementação das histórias do backlog,
- * seguindo o design system em frontend-guidelines.md.
+ * App shell (fundação): roteamento + guarda de rota. Nenhuma tela de
+ * negócio ainda — só placeholders para o roteamento ser testável (ver
+ * src/app/LoginPlaceholder.tsx e src/app/HomePlaceholder.tsx).
  */
 function App() {
   return (
-    <main style={{ padding: 16 }}>
-      <h1>Taketrip</h1>
-      <p>Monorepo no ar. A API deve responder em /api/v1/health.</p>
-    </main>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<LoginPlaceholder />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/" element={<HomePlaceholder />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

@@ -1,0 +1,45 @@
+.tt-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: var(--tt-r-pill);
+  font-family: var(--tt-font);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tt-badge--mute {
+  background: var(--tt-surface-2);
+  border: 1px solid var(--tt-border);
+  color: var(--tt-ink-mute);
+}
+
+.tt-badge--success {
+  background: var(--tt-success-soft);
+  color: var(--tt-success);
+}
+
+.tt-badge--warning {
+  background: var(--tt-warning-soft);
+  color: var(--tt-warning);
+}
+
+.tt-badge--danger {
+  background: var(--tt-danger-soft);
+  color: var(--tt-danger);
+}
+
+.tt-badge--primary {
+  background: var(--tt-primary-soft);
+  color: var(--tt-primary-press);
+}
+
+.tt-badge--accent {
+  background: var(--tt-accent);
+  color: var(--tt-accent-ink);
+}

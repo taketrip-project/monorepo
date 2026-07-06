@@ -1,0 +1,71 @@
+/*
+ * Trip Sans — fonte de marca do Taketrip. NUNCA cair para system-ui: é
+ * identidade visual do produto (ver frontend-guidelines.md §2).
+ *
+ * Ordem importa aqui. Declaramos a fonte variável primeiro cobrindo toda a
+ * faixa de peso (100–900) — isso permite pesos que não têm arquivo estático
+ * dedicado (ex.: 600/semibold, usado em título de card, nome de lista etc.)
+ * via interpolação exata em vez de o navegador "arredondar" para o peso
+ * estático mais próximo. Em seguida declaramos os arquivos estáticos
+ * (regular/medium/bold/ultra) para os pesos que TÊM arquivo próprio — por
+ * regra do CSS Fonts Module (@font-face com faixas de peso equivalentes,
+ * vale a última declarada no documento), essas faces estáticas "ganham" da
+ * variável para os pesos exatos 400/500/700/900, preservando o hinting/
+ * desenho original do arquivo estático. 600 continua resolvido pela
+ * variável, pois nenhum arquivo estático o declara.
+ */
+
+@font-face {
+  font-family: 'Trip Sans';
+  src: url('/fonts/trip-sans-variable.ttf') format('truetype-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Trip Sans';
+  src: url('/fonts/trip-sans.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Trip Sans';
+  src: url('/fonts/trip-sans-medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Trip Sans';
+  src: url('/fonts/trip-sans-bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Trip Sans';
+  src: url('/fonts/trip-sans-ultra.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/*
+ * Trip Sans Mono — horários, valores (R$), IDs, poltronas. Só existe um
+ * arquivo estático (regular/400). Onde o design pedir peso 500 em mono,
+ * o navegador usa a mesma face (não há arquivo mono-medium ainda); não é
+ * um bug, é limitação do asset atual — revisitar se um arquivo
+ * trip-sans-mono-medium.otf chegar do time de design.
+ */
+@font-face {
+  font-family: 'Trip Sans Mono';
+  src: url('/fonts/trip-sans-mono-regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
