@@ -23,6 +23,7 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
 
@@ -93,6 +94,18 @@ export const sessao = pgTable(
     refreshTokenHash: text('refresh_token_hash').notNull(),
     expiraEm: timestamp('expira_em', { withTimezone: true }).notNull(),
     revogadaEm: timestamp('revogada_em', { withTimezone: true }),
+    /**
+     * Aponta para a sessão emitida na rotação legítima que revogou esta
+     * (ADR 004). Distingue "revogada porque foi trocada por um token novo
+     * na hora" (preenchido) de "revogada por outro motivo" — logout,
+     * redefinição de senha, remoção de membro, ou a varredura de segurança
+     * quando um refresh já revogado é reapresentado fora da janela de 30s
+     * ("rouba a família") — caso em que fica NULL. Sem essa distinção, a
+     * tolerância de 30s para corrida entre abas acabaria também tolerando
+     * reuso de um token revogado por logout/roubo que por acaso caiu dentro
+     * da mesma janela de tempo (bug encontrado nos testes de integração).
+     */
+    substituidaPorId: uuid('substituida_por_id').references((): AnyPgColumn => sessao.id),
     userAgent: text('user_agent'),
     criadoEm: timestamp('criado_em', { withTimezone: true }).notNull().defaultNow(),
   },

@@ -28,6 +28,10 @@ jobs:
     env:
       DATABASE_URL: postgres://taketrip:taketrip@localhost:5432/taketrip_test
       DATABASE_URL_TEST: postgres://taketrip:taketrip@localhost:5432/taketrip_test
+      # Módulo identity (ADR 004): obrigatório para assinar/validar o JWT —
+      # sem `.env` no CI (gitignored), precisa vir daqui. SES_*/APP_URL são
+      # opcionais (o EmailService real vira log sem eles — ver notifications).
+      JWT_SECRET: ci-test-secret-nao-usar-em-producao
 
     steps:
       - uses: actions/checkout@v4

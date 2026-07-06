@@ -1,0 +1,2 @@
+ALTER TABLE "sessao" ADD COLUMN "substituida_por_id" uuid;--> statement-breakpoint
+ALTER TABLE "sessao" ADD CONSTRAINT "sessao_substituida_por_id_sessao_id_fk" FOREIGN KEY ("substituida_por_id") REFERENCES "public"."sessao"("id") ON DELETE no action ON UPDATE no action;
