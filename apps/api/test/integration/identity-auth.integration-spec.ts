@@ -287,6 +287,52 @@ describe('identity: /auth/* (banco real)', () => {
         .expect(401);
       expect(resposta.body.erro.codigo).toBe('token_invalido');
     });
+
+    it('caso de borda: duas requisições concorrentes com o MESMO token — só uma prevalece (uso único atômico)', async () => {
+      await registrar();
+
+      await http().post('/api/v1/auth/esqueci-senha').send({ email: 'fulano@teste.dev' }).expect(202);
+      const token = ctx.emailService.extrairToken();
+
+      const candidatas = [
+        { senha: 'senhaConcorrenteA111' },
+        { senha: 'senhaConcorrenteB222' },
+      ];
+
+      const respostas = await Promise.all(
+        candidatas.map(({ senha }) =>
+          http().post('/api/v1/auth/redefinir-senha').send({ token, nova_senha: senha }),
+        ),
+      );
+
+      // Exatamente uma das duas prevalece (204) e a outra é rejeitada como
+      // token já usado (401) — nunca as duas com 204.
+      const statusOrdenados = respostas.map((r) => r.status).sort((a, b) => a - b);
+      expect(statusOrdenados).toEqual([204, 401]);
+
+      const indiceVencedora = respostas.findIndex((r) => r.status === 204);
+      const indicePerdedora = indiceVencedora === 0 ? 1 : 0;
+
+      expect(respostas[indicePerdedora].body.erro.codigo).toBe('token_invalido');
+
+      // Só a senha da requisição vencedora efetivamente valeu — a da
+      // perdedora nunca foi aplicada, mesmo tendo corrido em paralelo.
+      await http()
+        .post('/api/v1/auth/login')
+        .send({ email: 'fulano@teste.dev', senha: candidatas[indiceVencedora].senha })
+        .expect(200);
+      await http()
+        .post('/api/v1/auth/login')
+        .send({ email: 'fulano@teste.dev', senha: candidatas[indicePerdedora].senha })
+        .expect(401);
+
+      // Uso único: o token não serve mais para nenhuma tentativa futura.
+      const terceiraTentativa = await http()
+        .post('/api/v1/auth/redefinir-senha')
+        .send({ token, nova_senha: 'senhaTerceiraTentativa789' })
+        .expect(401);
+      expect(terceiraTentativa.body.erro.codigo).toBe('token_invalido');
+    });
   });
 
   describe('POST /auth/convites/aceitar', () => {

@@ -276,7 +276,7 @@ export class AuthService {
     const senhaHash = await hashSenha(dto.nova_senha);
 
     await this.db.transaction(async (tx) => {
-      await tx
+      const [linhasAtualizadas] = await tx
         .update(tokenRedefinicaoSenha)
         .set({ usadoEm: agora })
         .where(
@@ -285,7 +285,14 @@ export class AuthService {
             eq(tokenRedefinicaoSenha.organizacaoId, tokenRow.organizacaoId),
             isNull(tokenRedefinicaoSenha.usadoEm),
           ),
-        );
+        )
+        .returning({ id: tokenRedefinicaoSenha.id });
+
+      if (!linhasAtualizadas) {
+        // Token já foi usado em outra requisição concorrente entre a leitura
+        // acima e esta transação — trata como token inválido (uso único).
+        throw new TokenInvalidoException();
+      }
 
       await tx
         .update(membro)
