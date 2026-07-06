@@ -27,3 +27,6 @@ apps/web/dist-ssr/
 # misc
 *.tsbuildinfo
 .pnpm-store/
+
+# binaries (brand assets, fonts, docs) — keep out of version control
+assets/
