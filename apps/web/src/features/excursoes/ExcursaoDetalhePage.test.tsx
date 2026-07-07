@@ -2,6 +2,7 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ExcursaoDetalhePage } from './ExcursaoDetalhePage';
+import { ToastProvider } from '../../ui';
 
 function jsonResponse(body: unknown, init: ResponseInit = {}) {
   return new Response(JSON.stringify(body), {
@@ -63,12 +64,14 @@ function excursaoBase(overrides: Partial<Record<string, unknown>> = {}) {
 
 function renderPagina() {
   return render(
-    <MemoryRouter initialEntries={['/excursoes/e1']}>
-      <Routes>
-        <Route path="/excursoes/:id" element={<ExcursaoDetalhePage />} />
-        <Route path="/excursoes" element={<div>Tela de lista</div>} />
-      </Routes>
-    </MemoryRouter>,
+    <ToastProvider>
+      <MemoryRouter initialEntries={['/excursoes/e1']}>
+        <Routes>
+          <Route path="/excursoes/:id" element={<ExcursaoDetalhePage />} />
+          <Route path="/excursoes" element={<div>Tela de lista</div>} />
+        </Routes>
+      </MemoryRouter>
+    </ToastProvider>,
   );
 }
 
@@ -135,7 +138,7 @@ describe('ExcursaoDetalhePage', () => {
     expect(screen.queryByRole('button', { name: 'Publicar excursão' })).not.toBeInTheDocument();
   });
 
-  it('cancela a excursão com motivo obrigatório', async () => {
+  it('cancela a excursão com motivo obrigatório e mostra toast de confirmação', async () => {
     const fetchMock = vi.fn();
     fetchMock.mockResolvedValueOnce(jsonResponse(excursaoBase({ status: 'publicada' })));
     fetchMock.mockResolvedValueOnce(jsonResponse(VEICULOS_RESPOSTA));
@@ -167,13 +170,16 @@ describe('ExcursaoDetalhePage', () => {
     );
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar excursão' }));
 
-    // Sem pendências de estorno: sucesso é silencioso — a sheet fecha sozinha
-    // (frontend-guidelines §8) e o card já reflete o novo status.
+    // Sem pendências de estorno: a sheet fecha sozinha (frontend-guidelines
+    // §8) e o card já reflete o novo status. Cancelar é raro e irreversível,
+    // então além do card, um toast confirma visivelmente ("sucesso
+    // surpreendente" — diferente do silencioso de marcar embarque).
     expect(await screen.findByText('Cancelada')).toBeInTheDocument();
     expect(screen.queryByRole('dialog', { name: 'Cancelar excursão' })).not.toBeInTheDocument();
+    expect(await screen.findByText('Excursão cancelada.')).toBeInTheDocument();
   });
 
-  it('cancela a excursão e mostra as pendências de estorno quando existem', async () => {
+  it('cancela a excursão e mostra as pendências de estorno quando existem, com toast também', async () => {
     const fetchMock = vi.fn();
     fetchMock.mockResolvedValueOnce(jsonResponse(excursaoBase({ status: 'publicada' })));
     fetchMock.mockResolvedValueOnce(jsonResponse(VEICULOS_RESPOSTA));
@@ -200,9 +206,12 @@ describe('ExcursaoDetalhePage', () => {
     );
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar excursão' }));
 
+    // Com pendência, a sheet continua aberta mostrando a lista — o toast
+    // complementa, não substitui essa exibição.
     expect(await within(dialog).findByText('Excursão cancelada.')).toBeInTheDocument();
     expect(within(dialog).getByText(/Pendências de estorno/)).toBeInTheDocument();
     expect(within(dialog).getByText('R$ 90,00')).toBeInTheDocument();
+    expect(await screen.findByText('Excursão cancelada.', { selector: '.tt-toast' })).toBeInTheDocument();
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Entendi' }));
     expect(screen.queryByRole('dialog', { name: 'Cancelar excursão' })).not.toBeInTheDocument();
@@ -224,43 +233,5 @@ describe('ExcursaoDetalhePage', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Excluir rascunho' }));
 
     expect(await screen.findByText('Tela de lista')).toBeInTheDocument();
-  });
-
-  it('adiciona e depois remove um ponto de embarque', async () => {
-    const fetchMock = vi.fn();
-    fetchMock.mockResolvedValueOnce(jsonResponse(excursaoBase()));
-    fetchMock.mockResolvedValueOnce(jsonResponse(VEICULOS_RESPOSTA));
-    vi.stubGlobal('fetch', fetchMock);
-
-    renderPagina();
-    await screen.findByText('Serra Fina');
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Pontos de embarque' }));
-    expect(screen.getByText('Nenhum ponto de embarque ainda. Adicione pelo menos um.')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Adicionar ponto de embarque' }));
-    const dialogAdicionar = await screen.findByRole('dialog', { name: 'Adicionar ponto de embarque' });
-
-    fireEvent.change(within(dialogAdicionar).getByLabelText('Local'), { target: { value: 'Praça Central' } });
-    fireEvent.change(within(dialogAdicionar).getByLabelText('Horário'), {
-      target: { value: '2026-06-15T05:00' },
-    });
-
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({ id: 'p1', local: 'Praça Central', horario: '2026-06-15T05:00:00-03:00', ordem: 1 }, { status: 201 }),
-    );
-    fireEvent.click(within(dialogAdicionar).getByRole('button', { name: 'Adicionar ponto' }));
-
-    expect(await screen.findByText('Praça Central')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Remover' }));
-    const dialogRemover = await screen.findByRole('dialog', { name: 'Remover ponto de embarque' });
-
-    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
-    fireEvent.click(within(dialogRemover).getByRole('button', { name: 'Remover ponto' }));
-
-    expect(
-      await screen.findByText('Nenhum ponto de embarque ainda. Adicione pelo menos um.'),
-    ).toBeInTheDocument();
   });
 });

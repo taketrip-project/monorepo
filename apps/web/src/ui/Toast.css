@@ -1,0 +1,30 @@
+.tt-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  max-width: calc(100% - var(--tt-space-32));
+  padding: 12px 20px;
+  border-radius: var(--tt-r-pill);
+  background: var(--tt-ink);
+  color: var(--tt-bg);
+  font-family: var(--tt-font);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: var(--tt-shadow-float);
+  z-index: 60;
+  pointer-events: none;
+  animation: tt-toast-in var(--tt-motion-flow) var(--tt-ease);
+}
+
+@keyframes tt-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}

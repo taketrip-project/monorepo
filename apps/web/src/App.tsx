@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { ToastProvider } from './ui';
 import { ProtectedRoute } from './app/ProtectedRoute';
 import { AppShell } from './app/AppShell';
 import { InicioPage } from './app/InicioPage';
@@ -23,31 +24,33 @@ import { ExcursaoDetalhePage } from './features/excursoes/ExcursaoDetalhePage';
  */
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/registro" element={<RegistroPage />} />
-        <Route path="/esqueci-senha" element={<EsqueciSenhaPage />} />
-        <Route path="/redefinir-senha" element={<RedefinirSenhaPage />} />
-        <Route path="/convite/aceitar" element={<AceitarConvitePage />} />
+    <ToastProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/registro" element={<RegistroPage />} />
+          <Route path="/esqueci-senha" element={<EsqueciSenhaPage />} />
+          <Route path="/redefinir-senha" element={<RedefinirSenhaPage />} />
+          <Route path="/convite/aceitar" element={<AceitarConvitePage />} />
 
-        <Route element={<ProtectedRoute />}>
-          <Route element={<AppShell />}>
-            <Route path="/" element={<InicioPage />} />
-            <Route path="/excursoes" element={<ExcursoesListPage />} />
-            <Route path="/excursoes/nova" element={<NovaExcursaoPage />} />
-            <Route path="/excursoes/:id" element={<ExcursaoDetalhePage />} />
-            <Route path="/mais" element={<MaisPage />} />
-            <Route path="/organizacao" element={<OrganizacaoPage />} />
-            <Route path="/veiculos" element={<VeiculosPage />} />
-            <Route path="/veiculos/novo" element={<NovoVeiculoPage />} />
-            <Route path="/veiculos/:id" element={<VeiculoDetalhePage />} />
+          <Route element={<ProtectedRoute />}>
+            <Route element={<AppShell />}>
+              <Route path="/" element={<InicioPage />} />
+              <Route path="/excursoes" element={<ExcursoesListPage />} />
+              <Route path="/excursoes/nova" element={<NovaExcursaoPage />} />
+              <Route path="/excursoes/:id" element={<ExcursaoDetalhePage />} />
+              <Route path="/mais" element={<MaisPage />} />
+              <Route path="/organizacao" element={<OrganizacaoPage />} />
+              <Route path="/veiculos" element={<VeiculosPage />} />
+              <Route path="/veiculos/novo" element={<NovoVeiculoPage />} />
+              <Route path="/veiculos/:id" element={<VeiculoDetalhePage />} />
+            </Route>
           </Route>
-        </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </ToastProvider>
   );
 }
 
