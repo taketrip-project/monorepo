@@ -1,0 +1,44 @@
+.tt-veiculos-page {
+  padding: var(--tt-space-24) var(--tt-space-16) var(--tt-space-64);
+  display: flex;
+  flex-direction: column;
+  gap: var(--tt-space-16);
+}
+
+.tt-veiculos-title {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--tt-ink);
+}
+
+.tt-veiculos-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--tt-border);
+  border-radius: var(--tt-r-md);
+  overflow: hidden;
+  background: var(--tt-surface);
+}
+
+.tt-veiculos-mute {
+  margin: 0;
+  font-size: 13px;
+  color: var(--tt-ink-mute);
+}
+
+.tt-veiculos-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--tt-space-8);
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--tt-r-md);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.tt-veiculos-alert--danger {
+  background: var(--tt-danger-soft);
+  color: var(--tt-danger);
+}

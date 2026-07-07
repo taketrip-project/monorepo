@@ -10,6 +10,9 @@ import { EsqueciSenhaPage } from './features/auth/EsqueciSenhaPage';
 import { RedefinirSenhaPage } from './features/auth/RedefinirSenhaPage';
 import { AceitarConvitePage } from './features/auth/AceitarConvitePage';
 import { OrganizacaoPage } from './features/organizacao/OrganizacaoPage';
+import { VeiculosPage } from './features/veiculos/VeiculosPage';
+import { NovoVeiculoPage } from './features/veiculos/NovoVeiculoPage';
+import { VeiculoDetalhePage } from './features/veiculos/VeiculoDetalhePage';
 
 /**
  * App shell: roteamento público (auth) + roteamento protegido (AppShell com
@@ -32,6 +35,9 @@ function App() {
             <Route path="/excursoes" element={<ExcursoesPage />} />
             <Route path="/mais" element={<MaisPage />} />
             <Route path="/organizacao" element={<OrganizacaoPage />} />
+            <Route path="/veiculos" element={<VeiculosPage />} />
+            <Route path="/veiculos/novo" element={<NovoVeiculoPage />} />
+            <Route path="/veiculos/:id" element={<VeiculoDetalhePage />} />
           </Route>
         </Route>
 

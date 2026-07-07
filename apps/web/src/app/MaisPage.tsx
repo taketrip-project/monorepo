@@ -34,6 +34,7 @@ export function MaisPage() {
 
       <div className="tt-mais-list">
         <ListRow title="Organização" subtitle="Equipe, convites e configurações" onClick={() => navigate('/organizacao')} />
+        <ListRow title="Veículos" subtitle="Frota, placas e layout de poltronas" onClick={() => navigate('/veiculos')} />
       </div>
 
       <Button variant="secondary" fullWidth loading={saindo} loadingLabel="Saindo..." onClick={sair}>

@@ -1,0 +1,86 @@
+.tt-veiculo-detalhe-page {
+  padding: var(--tt-space-24) var(--tt-space-16) var(--tt-space-32);
+  display: flex;
+  flex-direction: column;
+  gap: var(--tt-space-24);
+}
+
+.tt-veiculo-detalhe-title {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--tt-ink);
+}
+
+.tt-veiculo-detalhe-mute {
+  margin: 0;
+  font-size: 13px;
+  color: var(--tt-ink-mute);
+}
+
+.tt-veiculo-detalhe-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tt-space-16);
+}
+
+.tt-veiculo-detalhe-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tt-space-4);
+}
+
+.tt-veiculo-detalhe-field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tt-ink-mute);
+}
+
+.tt-veiculo-detalhe-tipo-group {
+  display: flex;
+  gap: var(--tt-space-8);
+}
+
+.tt-veiculo-detalhe-tipo-group > * {
+  flex: 1;
+}
+
+.tt-veiculo-detalhe-layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tt-space-8);
+  padding: var(--tt-space-16);
+  border: 1px solid var(--tt-border);
+  border-radius: var(--tt-r-md);
+  background: var(--tt-surface);
+}
+
+.tt-veiculo-detalhe-layout-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tt-ink);
+}
+
+.tt-veiculo-detalhe-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--tt-space-8);
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--tt-r-md);
+  font-size: 13px;
+  line-height: 1.4;
+  background: var(--tt-danger-soft);
+  color: var(--tt-danger);
+}
+
+.tt-veiculo-detalhe-alert--success {
+  background: var(--tt-success-soft);
+  color: var(--tt-success);
+}
+
+.tt-veiculo-detalhe-sheet-actions {
+  display: flex;
+  gap: var(--tt-space-12);
+}

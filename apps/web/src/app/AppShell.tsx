@@ -12,7 +12,9 @@ const PATH_BY_KEY: Record<BottomNavKey, string> = {
 function keyForPath(pathname: string): BottomNavKey {
   if (pathname.startsWith('/excursoes')) return 'excursoes';
   if (pathname.startsWith('/pagto')) return 'pagto';
-  if (pathname.startsWith('/mais') || pathname.startsWith('/organizacao')) return 'mais';
+  if (pathname.startsWith('/mais') || pathname.startsWith('/organizacao') || pathname.startsWith('/veiculos')) {
+    return 'mais';
+  }
   return 'inicio';
 }
 
