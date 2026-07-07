@@ -7,7 +7,7 @@ describe('ExcursionCard', () => {
     render(
       <ExcursionCard
         destino="Serra Fina"
-        status="aberta"
+        status="publicada"
         dataLabel="Dom · 15 jun"
         horaLabel="05:30"
         vagasOcupadas={34}
@@ -27,7 +27,7 @@ describe('ExcursionCard', () => {
     render(
       <ExcursionCard
         destino="Serra Fina"
-        status="aberta"
+        status="publicada"
         dataLabel="Dom · 15 jun"
         horaLabel="05:30"
         vagasOcupadas={23}
@@ -62,7 +62,7 @@ describe('ExcursionCard', () => {
     render(
       <ExcursionCard
         destino="Serra Fina"
-        status="aberta"
+        status="publicada"
         dataLabel="Dom · 15 jun"
         horaLabel="05:30"
         vagasOcupadas={1}

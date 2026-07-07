@@ -1,0 +1,67 @@
+.tt-excursoes-page {
+  padding: var(--tt-space-24) var(--tt-space-16) var(--tt-space-64);
+  display: flex;
+  flex-direction: column;
+  gap: var(--tt-space-16);
+}
+
+.tt-excursoes-title {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--tt-ink);
+}
+
+/* Tabs de filtro — spec do design system (frontend-guidelines §9). */
+.tt-excursoes-tabs {
+  display: flex;
+  gap: var(--tt-space-8);
+  border-bottom: 1px solid var(--tt-border);
+  overflow-x: auto;
+}
+
+.tt-excursoes-tab {
+  flex: 1;
+  min-height: 48px;
+  padding: 12px 14px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font-family: var(--tt-font);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tt-ink-mute);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--tt-motion-base) var(--tt-ease), border-color var(--tt-motion-base) var(--tt-ease);
+}
+
+.tt-excursoes-tab--active {
+  color: var(--tt-ink);
+  border-bottom-color: var(--tt-primary);
+}
+
+.tt-excursoes-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tt-space-12);
+}
+
+.tt-excursoes-mute {
+  margin: 0;
+  font-size: 13px;
+  color: var(--tt-ink-mute);
+}
+
+.tt-excursoes-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--tt-space-8);
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--tt-r-md);
+  font-size: 13px;
+  line-height: 1.4;
+  background: var(--tt-danger-soft);
+  color: var(--tt-danger);
+}

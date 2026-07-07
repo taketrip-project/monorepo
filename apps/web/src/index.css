@@ -34,3 +34,31 @@ body {
   outline: 2px solid var(--tt-primary);
   outline-offset: 2px;
 }
+
+/* Utilitários globais reaproveitados por várias telas. */
+
+/* Datas/horários/valores sempre em Trip Sans Mono (frontend-guidelines §10). */
+.tt-mono {
+  font-family: var(--tt-mono);
+}
+
+/* Campo multilinha (descrição, motivo) — não há um componente TextArea
+   canônico ainda; este utilitário reproduz o visual do Input para os poucos
+   lugares que precisam de texto longo. */
+.tt-textarea {
+  width: 100%;
+  padding: 14px;
+  background: var(--tt-surface);
+  border: 1px solid var(--tt-border);
+  border-radius: var(--tt-r-md);
+  font-family: var(--tt-font);
+  font-size: 14px;
+  color: var(--tt-ink);
+  resize: vertical;
+  min-height: 96px;
+  transition: border-color var(--tt-motion-fast) var(--tt-ease);
+}
+
+.tt-textarea:focus-visible {
+  border-color: var(--tt-primary);
+}

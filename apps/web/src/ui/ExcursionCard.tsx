@@ -1,22 +1,27 @@
 import './ExcursionCard.css';
 import { Badge, type BadgeTone } from './Badge';
 
-export type ExcursionStatus = 'rascunho' | 'aberta' | 'lotada' | 'cancelada' | 'concluida';
+/** Espelha StatusExcursao do contrato (docs/api/excursions.yaml). */
+export type ExcursionStatus = 'rascunho' | 'publicada' | 'lotada' | 'em_andamento' | 'concluida' | 'cancelada';
 
+// Rótulo é o termo pt-BR do produto (frontend-guidelines §10); nem sempre é
+// igual ao nome técnico do estado — ex.: "publicada" aparece como "Aberta".
 const STATUS_LABEL: Record<ExcursionStatus, string> = {
   rascunho: 'Rascunho',
-  aberta: 'Aberta',
+  publicada: 'Aberta',
   lotada: 'Lotada',
-  cancelada: 'Cancelada',
+  em_andamento: 'Em andamento',
   concluida: 'Concluída',
+  cancelada: 'Cancelada',
 };
 
 const STATUS_TONE: Record<ExcursionStatus, BadgeTone> = {
   rascunho: 'mute',
-  aberta: 'primary',
+  publicada: 'primary',
   lotada: 'warning',
-  cancelada: 'danger',
+  em_andamento: 'accent',
   concluida: 'success',
+  cancelada: 'danger',
 };
 
 export interface ExcursionCardProps {

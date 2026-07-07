@@ -2,7 +2,6 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './app/ProtectedRoute';
 import { AppShell } from './app/AppShell';
 import { InicioPage } from './app/InicioPage';
-import { ExcursoesPage } from './app/ExcursoesPage';
 import { MaisPage } from './app/MaisPage';
 import { LoginPage } from './features/auth/LoginPage';
 import { RegistroPage } from './features/auth/RegistroPage';
@@ -13,6 +12,9 @@ import { OrganizacaoPage } from './features/organizacao/OrganizacaoPage';
 import { VeiculosPage } from './features/veiculos/VeiculosPage';
 import { NovoVeiculoPage } from './features/veiculos/NovoVeiculoPage';
 import { VeiculoDetalhePage } from './features/veiculos/VeiculoDetalhePage';
+import { ExcursoesListPage } from './features/excursoes/ExcursoesListPage';
+import { NovaExcursaoPage } from './features/excursoes/NovaExcursaoPage';
+import { ExcursaoDetalhePage } from './features/excursoes/ExcursaoDetalhePage';
 
 /**
  * App shell: roteamento público (auth) + roteamento protegido (AppShell com
@@ -32,7 +34,9 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<AppShell />}>
             <Route path="/" element={<InicioPage />} />
-            <Route path="/excursoes" element={<ExcursoesPage />} />
+            <Route path="/excursoes" element={<ExcursoesListPage />} />
+            <Route path="/excursoes/nova" element={<NovaExcursaoPage />} />
+            <Route path="/excursoes/:id" element={<ExcursaoDetalhePage />} />
             <Route path="/mais" element={<MaisPage />} />
             <Route path="/organizacao" element={<OrganizacaoPage />} />
             <Route path="/veiculos" element={<VeiculosPage />} />

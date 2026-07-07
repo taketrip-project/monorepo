@@ -99,7 +99,10 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   const buildRequest = (): RequestInit => {
     const finalHeaders = new Headers(headers);
     const hasBody = body !== undefined;
-    if (hasBody && !finalHeaders.has('Content-Type')) {
+    const isFormData = body instanceof FormData;
+    // FormData define seu próprio Content-Type (multipart + boundary) — o
+    // navegador cuida disso sozinho; setar manualmente quebraria o boundary.
+    if (hasBody && !isFormData && !finalHeaders.has('Content-Type')) {
       finalHeaders.set('Content-Type', 'application/json');
     }
     if (auth) {
@@ -109,7 +112,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     return {
       ...rest,
       headers: finalHeaders,
-      body: hasBody ? JSON.stringify(body) : undefined,
+      body: hasBody ? (isFormData ? (body as FormData) : JSON.stringify(body)) : undefined,
     };
   };
 
