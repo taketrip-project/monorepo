@@ -1,39 +1,56 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { and, eq, gte, inArray } from 'drizzle-orm';
+import { DATABASE_CONNECTION, type Database } from '../../db/db.provider';
+import { TenantContextStorage } from '../../common/tenant-context';
+import { excursao } from '../excursions/schema';
+import { reserva } from '../bookings/schema';
 
 /**
  * Ponto de extensão para as checagens de vínculo entre veículo e
- * excursões/reservas exigidas por H1.4 (`docs/api/fleet.yaml`):
- * - editar/excluir veículo com excursão PUBLICADA vinculada exige
- *   `confirmar: true` (senão 409 `veiculo_em_uso_requer_confirmacao`);
- * - excluir veículo com excursão FUTURA publicada é sempre bloqueado
- *   (409 `veiculo_com_excursao_futura`, não contorna com `confirmar`);
- * - reduzir poltronas ou bloquear poltrona com reserva ATIVA é sempre
- *   bloqueado (409 `poltrona_com_reserva`).
+ * excursões/reservas exigidas por H1.4 (`docs/api/fleet.yaml`).
  *
- * Os módulos `excursions` e `bookings` ainda não existem nesta fase do
- * backlog (chegam depois na Fase 1) — por isso esta classe é um STUB que
- * hoje sempre responde "sem vínculo" / "sem reserva", deixando editar e
- * excluir veículo livres. `FleetService` só depende desta interface, nunca
- * de tabelas de excursions/bookings diretamente — quando esses módulos
- * existirem, troque só os corpos dos métodos abaixo (ou o provider
- * registrado em `fleet.module.ts`) para consultar de verdade:
- * - `possuiExcursaoPublicada`/`possuiExcursaoFuturaPublicada`: SELECT em
- *   `excursao` por `veiculo_id` + `organizacao_id`, `status = 'publicada'`
- *   (futura: `data_saida > now()`);
- * - `poltronasComReservaAtiva`: SELECT em `reserva` (join por `excursao`
- *   do veículo) com `status IN ('ativa', 'embarcada')` e `poltrona = ANY(...)`.
- * Nenhuma tabela/dependência fake foi criada — só este ponto de extensão.
+ * Lê `excursao`/`reserva` diretamente via `DATABASE_CONNECTION` — não
+ * através de providers de `ExcursionsModule`/`BookingsModule` — para não
+ * criar dependência de módulo (`fleet` é a base da pirâmide: `excursions` e
+ * `bookings` dependem dele, nunca o contrário).
  */
 @Injectable()
 export class VinculoExcursaoService {
+  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
+
   /** Veículo tem alguma excursão publicada vinculada (passada ou futura)? */
-  async possuiExcursaoPublicada(_veiculoId: string): Promise<boolean> {
-    return false;
+  async possuiExcursaoPublicada(veiculoId: string): Promise<boolean> {
+    const ctx = TenantContextStorage.get();
+    const [linha] = await this.db
+      .select({ id: excursao.id })
+      .from(excursao)
+      .where(
+        and(
+          eq(excursao.organizacaoId, ctx.organizacaoId),
+          eq(excursao.veiculoId, veiculoId),
+          eq(excursao.status, 'publicada'),
+        ),
+      )
+      .limit(1);
+    return !!linha;
   }
 
   /** Veículo tem excursão FUTURA (`data_saida` no futuro) publicada vinculada? */
-  async possuiExcursaoFuturaPublicada(_veiculoId: string): Promise<boolean> {
-    return false;
+  async possuiExcursaoFuturaPublicada(veiculoId: string): Promise<boolean> {
+    const ctx = TenantContextStorage.get();
+    const [linha] = await this.db
+      .select({ id: excursao.id })
+      .from(excursao)
+      .where(
+        and(
+          eq(excursao.organizacaoId, ctx.organizacaoId),
+          eq(excursao.veiculoId, veiculoId),
+          eq(excursao.status, 'publicada'),
+          gte(excursao.dataSaida, new Date()),
+        ),
+      )
+      .limit(1);
+    return !!linha;
   }
 
   /**
@@ -41,7 +58,21 @@ export class VinculoExcursaoService {
    * existir por redução de capacidade), quais têm reserva ativa hoje?
    * Retorna a sublista que conflita — vazio quando nenhuma conflita.
    */
-  async poltronasComReservaAtiva(_veiculoId: string, _poltronas: number[]): Promise<number[]> {
-    return [];
+  async poltronasComReservaAtiva(veiculoId: string, poltronas: number[]): Promise<number[]> {
+    if (poltronas.length === 0) return [];
+    const ctx = TenantContextStorage.get();
+    const linhas = await this.db
+      .select({ poltrona: reserva.poltrona })
+      .from(reserva)
+      .innerJoin(excursao, eq(excursao.id, reserva.excursaoId))
+      .where(
+        and(
+          eq(reserva.organizacaoId, ctx.organizacaoId),
+          eq(excursao.veiculoId, veiculoId),
+          inArray(reserva.status, ['ativa', 'embarcada']),
+          inArray(reserva.poltrona, poltronas),
+        ),
+      );
+    return [...new Set(linhas.map((l) => l.poltrona))];
   }
 }
