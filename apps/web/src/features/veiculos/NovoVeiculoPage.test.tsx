@@ -109,4 +109,38 @@ describe('NovoVeiculoPage', () => {
     expect(chamada).toContain('tipo=onibus');
     expect(chamada).toContain('quantidade_poltronas=42');
   });
+
+  it('debounce: digitação rápida da quantidade dispara só uma chamada, com o valor final', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi.fn();
+      fetchMock.mockResolvedValueOnce(jsonResponse(LAYOUT_VAN)); // preview inicial (van, 15)
+      vi.stubGlobal('fetch', fetchMock);
+
+      renderPagina();
+      await vi.advanceTimersByTimeAsync(300);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Ônibus' }));
+      // "digita" 42 -> 43 rapidamente, bem antes dos 300ms de debounce de cada mudança
+      fireEvent.change(screen.getByLabelText('Quantidade de poltronas'), { target: { value: '4' } });
+      await vi.advanceTimersByTimeAsync(100);
+      fireEvent.change(screen.getByLabelText('Quantidade de poltronas'), { target: { value: '43' } });
+      await vi.advanceTimersByTimeAsync(100);
+
+      // nenhuma chamada nova ainda: nem a troca de tipo, nem os dígitos intermediários
+      // tiveram 300ms ininterruptos para dispar o debounce
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+
+      fetchMock.mockResolvedValueOnce(jsonResponse(LAYOUT_ONIBUS));
+      await vi.advanceTimersByTimeAsync(300);
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const chamadaFinal = fetchMock.mock.calls[1][0] as string;
+      expect(chamadaFinal).toContain('tipo=onibus');
+      expect(chamadaFinal).toContain('quantidade_poltronas=43');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

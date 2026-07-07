@@ -98,6 +98,9 @@ describe('VeiculoDetalhePage', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar exclusão' }));
 
     expect(await screen.findByText('Tela de lista')).toBeInTheDocument();
+
+    const chamadaDeleteConfirmada = fetchMock.mock.calls[2][0] as string;
+    expect(chamadaDeleteConfirmada).toContain('confirmar=true');
   });
 
   it('bloqueia a exclusão quando há excursão futura vinculada', async () => {
