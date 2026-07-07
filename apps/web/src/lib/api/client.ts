@@ -6,14 +6,20 @@ const API_URL = import.meta.env.VITE_API_URL ?? '/api/v1';
 export class ApiError extends Error {
   status: number;
   codigo: string;
+  /** Mensagem pt-BR pronta para exibir (igual a `.message`, herdado de Error — exposta aqui de novo para ficar a par de `codigo`/`detalhes`, que também são pt-BR). */
+  mensagem: string;
   detalhes?: unknown;
+  /** Presente quando a resposta traz o header Retry-After (ex.: 429 em /auth/login). */
+  retryAfterSeconds?: number;
 
-  constructor(status: number, codigo: string, mensagem: string, detalhes?: unknown) {
+  constructor(status: number, codigo: string, mensagem: string, detalhes?: unknown, retryAfterSeconds?: number) {
     super(mensagem);
     this.name = 'ApiError';
     this.status = status;
     this.codigo = codigo;
+    this.mensagem = mensagem;
     this.detalhes = detalhes;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
@@ -73,6 +79,14 @@ async function parseErrorBody(response: Response): Promise<{ codigo: string; men
   }
 }
 
+/** Extrai o Retry-After (segundos) quando presente — ex.: 429 de /auth/login. */
+function parseRetryAfter(response: Response): number | undefined {
+  const header = response.headers.get('Retry-After');
+  if (!header) return undefined;
+  const seconds = Number.parseInt(header, 10);
+  return Number.isNaN(seconds) ? undefined : seconds;
+}
+
 /**
  * Cliente HTTP do Taketrip: injeta o access token automaticamente e, em
  * caso de 401, tenta renovar a sessão via /auth/refresh UMA vez e repete a
@@ -113,7 +127,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
       clearSession();
       sessionExpiredHandler();
       const { codigo, mensagem, detalhes } = await parseErrorBody(response);
-      throw new ApiError(401, codigo, mensagem, detalhes);
+      throw new ApiError(401, codigo, mensagem, detalhes, parseRetryAfter(response));
     }
 
     response = await fetch(`${API_URL}${path}`, buildRequest());
@@ -121,11 +135,15 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
 
   if (!response.ok) {
     const { codigo, mensagem, detalhes } = await parseErrorBody(response);
-    throw new ApiError(response.status, codigo, mensagem, detalhes);
+    throw new ApiError(response.status, codigo, mensagem, detalhes, parseRetryAfter(response));
   }
 
   if (response.status === 204) {
     return undefined as T;
   }
-  return (await response.json()) as T;
+  // Alguns endpoints (ex. POST /auth/esqueci-senha) respondem 202 sem corpo.
+  // response.json() rejeitaria com corpo vazio, então lemos como texto e só
+  // fazemos parse se houver conteúdo.
+  const text = await response.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }

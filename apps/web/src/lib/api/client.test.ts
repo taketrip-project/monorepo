@@ -103,6 +103,20 @@ describe('apiFetch — interceptor de refresh', () => {
     expect(chamadasRefresh).toHaveLength(1);
   });
 
+  it('em erro com header Retry-After (ex.: 429 de login), expõe retryAfterSeconds no ApiError', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      jsonResponse(
+        { erro: { codigo: 'muitas_tentativas', mensagem: 'Muitas tentativas. Espera um pouco.' } },
+        { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': '47' } },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      apiFetch('/auth/login', { method: 'POST', body: { email: 'a@b.com', senha: 'x' }, auth: false }),
+    ).rejects.toMatchObject({ status: 429, codigo: 'muitas_tentativas', retryAfterSeconds: 47 });
+  });
+
   it('não injeta Authorization quando auth: false (endpoints públicos)', async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ ok: true }));
     vi.stubGlobal('fetch', fetchMock);

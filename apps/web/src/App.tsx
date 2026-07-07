@@ -1,21 +1,40 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './app/ProtectedRoute';
-import { LoginPlaceholder } from './app/LoginPlaceholder';
-import { HomePlaceholder } from './app/HomePlaceholder';
+import { AppShell } from './app/AppShell';
+import { InicioPage } from './app/InicioPage';
+import { ExcursoesPage } from './app/ExcursoesPage';
+import { MaisPage } from './app/MaisPage';
+import { LoginPage } from './features/auth/LoginPage';
+import { RegistroPage } from './features/auth/RegistroPage';
+import { EsqueciSenhaPage } from './features/auth/EsqueciSenhaPage';
+import { RedefinirSenhaPage } from './features/auth/RedefinirSenhaPage';
+import { AceitarConvitePage } from './features/auth/AceitarConvitePage';
+import { OrganizacaoPage } from './features/organizacao/OrganizacaoPage';
 
 /**
- * App shell (fundação): roteamento + guarda de rota. Nenhuma tela de
- * negócio ainda — só placeholders para o roteamento ser testável (ver
- * src/app/LoginPlaceholder.tsx e src/app/HomePlaceholder.tsx).
+ * App shell: roteamento público (auth) + roteamento protegido (AppShell com
+ * BottomNav). Ver docs/api/identity.yaml para o contrato consumido por cada
+ * tela pública.
  */
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={<LoginPlaceholder />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/registro" element={<RegistroPage />} />
+        <Route path="/esqueci-senha" element={<EsqueciSenhaPage />} />
+        <Route path="/redefinir-senha" element={<RedefinirSenhaPage />} />
+        <Route path="/convite/aceitar" element={<AceitarConvitePage />} />
+
         <Route element={<ProtectedRoute />}>
-          <Route path="/" element={<HomePlaceholder />} />
+          <Route element={<AppShell />}>
+            <Route path="/" element={<InicioPage />} />
+            <Route path="/excursoes" element={<ExcursoesPage />} />
+            <Route path="/mais" element={<MaisPage />} />
+            <Route path="/organizacao" element={<OrganizacaoPage />} />
+          </Route>
         </Route>
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
