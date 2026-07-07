@@ -16,13 +16,15 @@ import { excursaoParaCardProps } from './excursaoCard';
 import { ChecklistLegalTab } from './excursaoDetalhe/ChecklistLegalTab';
 import { DetalhesTab } from './excursaoDetalhe/DetalhesTab';
 import { FotosTab } from './excursaoDetalhe/FotosTab';
+import { PassageirosTab } from './excursaoDetalhe/PassageirosTab';
 import { PontosEmbarqueTab } from './excursaoDetalhe/PontosEmbarqueTab';
 import './excursaoDetalhe/excursaoDetalhe.css';
 
-type TabKey = 'detalhes' | 'pontos' | 'fotos' | 'checklist';
+type TabKey = 'detalhes' | 'passageiros' | 'pontos' | 'fotos' | 'checklist';
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'detalhes', label: 'Detalhes' },
+  { key: 'passageiros', label: 'Passageiros' },
   { key: 'pontos', label: 'Pontos de embarque' },
   { key: 'fotos', label: 'Fotos' },
   { key: 'checklist', label: 'Checklist legal' },
@@ -245,6 +247,14 @@ export function ExcursaoDetalhePage() {
 
       {activeTab === 'detalhes' && (
         <DetalhesTab excursao={excursao} veiculos={veiculos} onSalvo={setExcursao} />
+      )}
+
+      {activeTab === 'passageiros' && (
+        <PassageirosTab
+          excursaoId={excursao.id}
+          precoDefaultCentavos={excursao.preco_centavos}
+          onExcursaoAtualizada={atualizarExcursaoParcial}
+        />
       )}
 
       {activeTab === 'pontos' && (

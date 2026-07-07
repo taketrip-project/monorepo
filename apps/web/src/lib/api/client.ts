@@ -88,12 +88,14 @@ function parseRetryAfter(response: Response): number | undefined {
 }
 
 /**
- * Cliente HTTP do Taketrip: injeta o access token automaticamente e, em
- * caso de 401, tenta renovar a sessão via /auth/refresh UMA vez e repete a
- * requisição original. Se o refresh também falhar, limpa a sessão e
- * notifica o app (que redireciona para /login).
+ * Núcleo compartilhado por `apiFetch` e `apiFetchBlob`: injeta o access
+ * token automaticamente e, em caso de 401, tenta renovar a sessão via
+ * /auth/refresh UMA vez e repete a requisição original. Se o refresh também
+ * falhar, limpa a sessão e notifica o app (que redireciona para /login).
+ * Devolve o `Response` cru — quem chama decide como ler o corpo (JSON ou
+ * blob).
  */
-export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
+async function fetchComAuth(path: string, options: ApiFetchOptions = {}): Promise<Response> {
   const { auth = true, headers, body, ...rest } = options;
 
   const buildRequest = (): RequestInit => {
@@ -136,6 +138,13 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     response = await fetch(`${API_URL}${path}`, buildRequest());
   }
 
+  return response;
+}
+
+/** Cliente HTTP padrão do Taketrip — corpo JSON (ver `fetchComAuth` para o interceptor de refresh). */
+export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
+  const response = await fetchComAuth(path, options);
+
   if (!response.ok) {
     const { codigo, mensagem, detalhes } = await parseErrorBody(response);
     throw new ApiError(response.status, codigo, mensagem, detalhes, parseRetryAfter(response));
@@ -146,4 +155,21 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   // fazemos parse se houver conteúdo — cobre 204 sem precisar de um branch à parte.
   const text = await response.text();
   return (text ? JSON.parse(text) : undefined) as T;
+}
+
+/**
+ * Variante binária de `apiFetch` — para respostas que não são JSON (ex.:
+ * PDF/HTML da lista de passageiros imprimível). Mesmo interceptor de
+ * refresh; quem chama decide o que fazer com o Blob (normalmente abrir em
+ * nova aba via `URL.createObjectURL`).
+ */
+export async function apiFetchBlob(path: string, options: ApiFetchOptions = {}): Promise<Blob> {
+  const response = await fetchComAuth(path, options);
+
+  if (!response.ok) {
+    const { codigo, mensagem, detalhes } = await parseErrorBody(response);
+    throw new ApiError(response.status, codigo, mensagem, detalhes, parseRetryAfter(response));
+  }
+
+  return response.blob();
 }

@@ -16,6 +16,7 @@ import { VeiculoDetalhePage } from './features/veiculos/VeiculoDetalhePage';
 import { ExcursoesListPage } from './features/excursoes/ExcursoesListPage';
 import { NovaExcursaoPage } from './features/excursoes/NovaExcursaoPage';
 import { ExcursaoDetalhePage } from './features/excursoes/ExcursaoDetalhePage';
+import { ReservaDetalhePage } from './features/excursoes/ReservaDetalhePage';
 
 /**
  * App shell: roteamento público (auth) + roteamento protegido (AppShell com
@@ -39,6 +40,7 @@ function App() {
               <Route path="/excursoes" element={<ExcursoesListPage />} />
               <Route path="/excursoes/nova" element={<NovaExcursaoPage />} />
               <Route path="/excursoes/:id" element={<ExcursaoDetalhePage />} />
+              <Route path="/excursoes/:id/reservas/:reservaId" element={<ReservaDetalhePage />} />
               <Route path="/mais" element={<MaisPage />} />
               <Route path="/organizacao" element={<OrganizacaoPage />} />
               <Route path="/veiculos" element={<VeiculosPage />} />

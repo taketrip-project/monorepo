@@ -1,0 +1,35 @@
+.tt-reserva-detalhe-page {
+  padding: var(--tt-space-24) var(--tt-space-16) var(--tt-space-64);
+  display: flex;
+  flex-direction: column;
+  gap: var(--tt-space-16);
+}
+
+.tt-reserva-detalhe-title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--tt-ink);
+}
+
+.tt-reserva-detalhe-badges {
+  display: flex;
+  gap: var(--tt-space-8);
+}
+
+.tt-reserva-detalhe-secao {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tt-space-8);
+  padding: var(--tt-space-16);
+  background: var(--tt-surface);
+  border: 1px solid var(--tt-border);
+  border-radius: var(--tt-r-md);
+}
+
+.tt-reserva-detalhe-secao-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tt-ink);
+}

@@ -234,4 +234,20 @@ describe('ExcursaoDetalhePage', () => {
 
     expect(await screen.findByText('Tela de lista')).toBeInTheDocument();
   });
+
+  it('abre a aba Passageiros e carrega a view Lista da aba', async () => {
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce(jsonResponse(excursaoBase({ status: 'publicada' })));
+    fetchMock.mockResolvedValueOnce(jsonResponse(VEICULOS_RESPOSTA));
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderPagina();
+    await screen.findByText('Serra Fina');
+
+    fetchMock.mockResolvedValueOnce(jsonResponse({ dados: [], paginacao: { pagina: 1, por_pagina: 20, total: 0 } }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Passageiros' }));
+
+    expect(screen.getByRole('tab', { name: 'Passageiros' })).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByText(/Toque numa poltrona livre no Mapa/)).toBeInTheDocument();
+  });
 });

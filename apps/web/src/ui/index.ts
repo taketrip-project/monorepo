@@ -2,8 +2,6 @@
  * Componentes canônicos do design system Taketrip. Construídos uma vez,
  * reutilizados sempre — não criar variações fora desta lista (ver
  * frontend-guidelines.md §7 e .claude/skills/design-system-taketrip).
- *
- * SeatMap não está aqui ainda: depende do módulo bookings (não implementado).
  */
 export { Button } from './Button';
 export type { ButtonProps, ButtonVariant, ButtonSize } from './Button';
@@ -31,3 +29,6 @@ export type { FABProps } from './FAB';
 
 export { ToastProvider } from './Toast';
 export { useToast } from './useToast';
+
+export { SeatMap } from './SeatMap';
+export type { SeatMapProps, SeatMapEstado, SeatMapPoltrona } from './SeatMap';
