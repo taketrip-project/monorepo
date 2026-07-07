@@ -138,12 +138,9 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     throw new ApiError(response.status, codigo, mensagem, detalhes, parseRetryAfter(response));
   }
 
-  if (response.status === 204) {
-    return undefined as T;
-  }
-  // Alguns endpoints (ex. POST /auth/esqueci-senha) respondem 202 sem corpo.
+  // 204 e alguns 202 (ex. POST /auth/esqueci-senha) respondem sem corpo.
   // response.json() rejeitaria com corpo vazio, então lemos como texto e só
-  // fazemos parse se houver conteúdo.
+  // fazemos parse se houver conteúdo — cobre 204 sem precisar de um branch à parte.
   const text = await response.text();
   return (text ? JSON.parse(text) : undefined) as T;
 }

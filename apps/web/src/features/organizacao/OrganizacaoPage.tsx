@@ -300,7 +300,7 @@ export function OrganizacaoPage() {
                 membros.length > 1 ? (
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="md"
                     onClick={() => setMembroParaRemover(membro)}
                     aria-label={`Remover ${membro.nome}`}
                   >
@@ -314,7 +314,7 @@ export function OrganizacaoPage() {
 
         <div className="tt-org-section-header">
           <h3 className="tt-org-subsection-title">Convites pendentes</h3>
-          <Button variant="soft" size="sm" onClick={abrirSheetConvite}>
+          <Button variant="soft" size="md" onClick={abrirSheetConvite}>
             Convidar
           </Button>
         </div>
@@ -338,7 +338,7 @@ export function OrganizacaoPage() {
                 badge={
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="md"
                     loading={cancelandoConviteId === convite.id}
                     loadingLabel="Cancelando..."
                     onClick={() => cancelarConviteClick(convite.id)}
