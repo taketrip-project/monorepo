@@ -68,6 +68,7 @@ export class VinculoExcursaoService {
       .where(
         and(
           eq(reserva.organizacaoId, ctx.organizacaoId),
+          eq(excursao.organizacaoId, ctx.organizacaoId),
           eq(excursao.veiculoId, veiculoId),
           inArray(reserva.status, ['ativa', 'embarcada']),
           inArray(reserva.poltrona, poltronas),

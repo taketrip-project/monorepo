@@ -125,11 +125,13 @@ export class ReservasService {
         .orderBy(reserva.poltrona)
         .limit(query.por_pagina)
         .offset((query.pagina - 1) * query.por_pagina),
-      this.db
-        .select({ total: count() })
-        .from(reserva)
-        .innerJoin(passageiro, eq(passageiro.id, reserva.passageiroId))
-        .where(condicao),
+      query.busca
+        ? this.db
+            .select({ total: count() })
+            .from(reserva)
+            .innerJoin(passageiro, eq(passageiro.id, reserva.passageiroId))
+            .where(condicao)
+        : this.db.select({ total: count() }).from(reserva).where(condicao),
     ]);
 
     return {
@@ -232,15 +234,6 @@ export class ReservasService {
       await this.validarPontoEmbarque(atual.excursaoId, dto.ponto_embarque_id);
     }
 
-    if (dto.nome !== undefined || dto.cpf !== undefined) {
-      const passageiroAtual = await this.buscarPassageiro(atual.passageiroId);
-      await this.passageirosService.obterOuCriar(
-        dto.nome ?? passageiroAtual.nome,
-        passageiroAtual.whatsapp,
-        dto.cpf,
-      );
-    }
-
     const patch: Partial<typeof reserva.$inferInsert> = { atualizadoEm: new Date() };
     if (dto.poltrona !== undefined) patch.poltrona = dto.poltrona;
     if (dto.ponto_embarque_id !== undefined) patch.pontoEmbarqueId = dto.ponto_embarque_id;
@@ -254,6 +247,18 @@ export class ReservasService {
         .where(and(eq(reserva.id, reservaId), eq(reserva.organizacaoId, ctx.organizacaoId)))
         .returning();
       if (!atualizada) throw new NaoEncontradoException();
+
+      // Só toca o cadastro do passageiro DEPOIS que a poltrona foi
+      // confirmada — evita persistir nome/cpf quando o PATCH termina em
+      // 409 por poltrona ocupada.
+      if (dto.nome !== undefined || dto.cpf !== undefined) {
+        const passageiroAtual = await this.buscarPassageiro(atual.passageiroId);
+        await this.passageirosService.obterOuCriar(
+          dto.nome ?? passageiroAtual.nome,
+          passageiroAtual.whatsapp,
+          dto.cpf,
+        );
+      }
       const passageiroFinal = await this.buscarPassageiro(atualizada.passageiroId);
       return mapReserva(atualizada, passageiroFinal);
     } catch (erro) {
