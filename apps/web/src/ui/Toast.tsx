@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ToastContext, type ToastContextValue } from './useToast';
 import './Toast.css';
 
 /**
@@ -9,24 +10,27 @@ import './Toast.css';
  * pensado para notificações simultâneas.
  */
 const DURACAO_MS = 3000;
-
-interface ToastContextValue {
-  mostrarToast: (mensagem: string) => void;
-}
-
-const ToastContext = createContext<ToastContextValue | null>(null);
+const DURACAO_FADE_MS = 180;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [mensagem, setMensagem] = useState<string | null>(null);
+  const [saindo, setSaindo] = useState(false);
   const timeoutRef = useRef<number | null>(null);
+  const fadeRef = useRef<number | null>(null);
 
   const mostrarToast = useCallback((texto: string) => {
-    if (timeoutRef.current !== null) {
-      window.clearTimeout(timeoutRef.current);
-    }
+    if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
+    if (fadeRef.current !== null) window.clearTimeout(fadeRef.current);
+
     setMensagem(texto);
+    setSaindo(false);
     timeoutRef.current = window.setTimeout(() => {
-      setMensagem(null);
+      setSaindo(true);
+      fadeRef.current = window.setTimeout(() => {
+        setMensagem(null);
+        setSaindo(false);
+        fadeRef.current = null;
+      }, DURACAO_FADE_MS);
       timeoutRef.current = null;
     }, DURACAO_MS);
   }, []);
@@ -37,19 +41,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
       {mensagem && (
-        <div className="tt-toast" role="status" aria-live="polite">
+        <div
+          className={`tt-toast${saindo ? ' tt-toast--saindo' : ''}`}
+          role="status"
+          aria-live="polite"
+        >
           {mensagem}
         </div>
       )}
     </ToastContext.Provider>
   );
-}
-
-/** Hook de acesso ao toast global. Precisa estar dentro de um `<ToastProvider>`. */
-export function useToast(): ToastContextValue {
-  const ctx = useContext(ToastContext);
-  if (!ctx) {
-    throw new Error('useToast precisa ser usado dentro de um <ToastProvider>.');
-  }
-  return ctx;
 }

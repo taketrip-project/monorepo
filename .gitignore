@@ -30,3 +30,6 @@ apps/web/dist-ssr/
 
 # binaries (brand assets, fonts, docs) — keep out of version control
 assets/
+
+# runtime lock state from the Claude Code harness, not project content
+.claude/scheduled_tasks.lock

@@ -1,6 +1,7 @@
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ToastProvider, useToast } from './Toast';
+import { ToastProvider } from './Toast';
+import { useToast } from './useToast';
 
 function Disparador({ mensagem }: { mensagem: string }) {
   const { mostrarToast } = useToast();
@@ -37,6 +38,12 @@ describe('Toast', () => {
 
     act(() => {
       vi.advanceTimersByTime(3000);
+    });
+    // ainda em fade-out (tt-toast--saindo) por um instante antes de sair do DOM
+    expect(screen.getByText('Excursão cancelada.')).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(180);
     });
     expect(screen.queryByText('Excursão cancelada.')).not.toBeInTheDocument();
   });
