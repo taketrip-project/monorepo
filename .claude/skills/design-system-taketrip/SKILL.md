@@ -20,9 +20,9 @@ Fonte completa: `frontend-guidelines.md` (raiz do repositório). Este resumo exi
 
 ## Tokens essenciais
 - Fundo do app: `--tt-bg` #fffaf5 (nunca #fff puro). Superfície #ffffff, borda #ece7e0.
-- Primária: `--tt-primary` #ea580c (laranja) · pressed #c2410c · soft #fff1e3.
+- Primária: `--tt-primary` #0a9396 (teal, em teste — ver frontend-guidelines.md §1b) · pressed #067274 · soft #e5f5f5. Accent #fbcdb6 (coral) · accent-ink #7d2d12.
 - Status: success #15803d · warning #b45309 · danger #b91c1c (cada um com `*-soft` para fundo).
-- **Proibido azul** — informativo usa `--tt-ink-mute` #57534e.
+- **Proibido azul** — informativo usa `--tt-ink-mute` #57534e. Exceção deliberada: `--tt-primary` (teal, fronteira ciano/verde-azulado) por pedido explícito de teste — ver frontend-guidelines.md §1.
 - Fontes: **Trip Sans** (UI) e **Trip Sans Mono** (R$, horários, IDs, poltronas) via @font-face de `/fonts/` (arquivos em `Trip-Sans-Font.zip`). Nunca cair para system-ui.
 - Raio default 8px (badges 6, sheets 12, pills 999). Espaçamento múltiplo de 4. Elevação por borda, não sombra.
 - Motion: 120/180/240/320ms, `cubic-bezier(.2,.7,.3,1)`; sem bounce, sem scale em listas; erro = shake 6px 1x.

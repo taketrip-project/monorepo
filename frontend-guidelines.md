@@ -549,10 +549,12 @@ Antes de subir uma tela nova, verifique:
 - [ ] Nada usa `#fff` puro como background da tela
 - [ ] Letter-spacing negativo só em ≥22px
 - [ ] Datas/horários/valores em `--tt-mono`
-- [ ] Sem azul frio em lugar nenhum
+- [ ] Sem azul frio em lugar nenhum (exceção documentada: `--tt-primary`, ver §1)
 - [ ] Animações ≤320ms, sem bounce
 - [ ] Texto em pt-BR informal, sem jargão técnico
 - [ ] Componentes da tabela acima — não inventar variações
+- [ ] Nenhum valor de `<Input>` em bold (sempre peso 400)
+- [ ] Nenhuma scrollbar visível introduzida fora do padrão global oculto
 
 ---
 
