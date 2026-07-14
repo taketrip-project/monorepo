@@ -1,14 +1,36 @@
 openapi: 3.1.0
 info:
   title: Taketrip API — Endpoints PÚBLICOS
-  version: 0.1.0
+  version: 0.2.0
   description: >
     TODOS os endpoints deste arquivo são PÚBLICOS (sem JWT) e anotados com
     @Public() no NestJS — cada um é revisado individualmente (skill
     multi-tenancy). São as ÚNICAS exceções ao escopo por organização:
     a página da excursão (H3.1), a reserva do passageiro (H3.2) e o webhook
     PIX (H2.3). Nenhuma resposta expõe dado de passageiro de terceiros.
-    Rate limiting por IP em todos.
+
+
+    RESOLUÇÃO DE TENANT SEM JWT (ver ADR 008): nestas rotas o
+    `TenantContext` (AsyncLocalStorage, ADR 003) NUNCA é populado —
+    `organizacao_id` nunca vem de payload nem de contexto ambiente.
+    Cada rota resolve o tenant a partir de uma chave de capacidade opaca
+    lida do próprio banco: `codigo_publico` da excursão (rotas
+    `/publico/excursoes/{codigo}*`) ou o UUID v7 da reserva, que funciona
+    como token de posse (`/publico/reservas/{reservaId}`) — mesmo padrão já
+    usado por `redefinir-senha` em identity (token opaco → resolve
+    organização a partir da própria linha, nunca do cliente).
+
+
+    RATE LIMITING por IP (`@nestjs/throttler`, em memória — processo único
+    na VPS, sem Redis): leituras (`GET /publico/excursoes/{codigo}` e
+    `.../mapa-poltronas`) 30 req/min; criação de reserva (`POST
+    .../reservas`) 5 req/min — a garantia de corretude contra dupla-reserva
+    é sempre a UNIQUE do banco (`reserva_excursao_poltrona_ativa_uq`), o
+    rate limit só evita ruído/abuso, não substitui a constraint; consulta de
+    situação (`GET /publico/reservas/{reservaId}`) 60 req/min (a tela de
+    confirmação faz polling curto). Todo 429 usa o mesmo envelope de erro
+    (`MuitasTentativasException`, `common/domain-exception.ts`) com
+    `Retry-After`.
 servers:
   - url: /api/v1
 
@@ -31,11 +53,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ExcursaoPublica' }
-        '404':
-          description: Excursão indisponível (codigo `excursao_indisponivel`).
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Erro' }
+        '404': { $ref: '#/components/responses/ErroIndisponivel' }
 
   /publico/excursoes/{codigo}/mapa-poltronas:
     get:
@@ -43,7 +61,9 @@ paths:
       description: >
         Estados REDUZIDOS: livre · ocupada · bloqueada. O público NUNCA vê
         pendente/pago nem nome de passageiro — só o que precisa para escolher
-        poltrona livre.
+        poltrona livre. Mesmo `layout.fileiras` de
+        `bookings.yaml#/components/schemas/MapaPoltronas` (reaproveita o
+        layout do veículo); a diferença é só no detalhe por poltrona.
       security: []
       parameters:
         - { name: codigo, in: path, required: true, schema: { type: string } }
@@ -52,10 +72,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/MapaPoltronasPublico' }
-        '404':
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Erro' }
+        '404': { $ref: '#/components/responses/ErroIndisponivel' }
 
   /publico/excursoes/{codigo}/reservas:
     post:
@@ -63,11 +80,27 @@ paths:
       description: >
         Zero conta, zero senha: poltrona + nome + WhatsApp (CPF opcional) +
         escolha sinal/integral. A reserva nasce `pendente` com origem
-        `pagina_publica` e segue EXATAMENTE as mesmas regras de poltrona
-        única (UNIQUE no banco) e expiração das reservas do organizador.
-        Retorna a cobrança PIX e instruções com prazo em linguagem humana.
-        Com PIX não configurado pela organização, a reserva é criada e as
-        instruções orientam a combinar o pagamento com o organizador.
+        `pagina_publica` e reaproveita o MESMO núcleo transacional do
+        cadastro rápido do organizador (H1.9) — poltrona única (UNIQUE no
+        banco), cálculo de expiração e projeção `publicada → lotada` são
+        UMA implementação só, nunca duplicada (ver ADR 008).
+
+
+        DECISÃO DE SEGURANÇA: este corpo NÃO aceita `valor_centavos` nem
+        `forma_pagamento` (campos que só existem no cadastro do organizador,
+        `POST /excursoes/{excursaoId}/reservas` em `bookings.yaml`) — o
+        servidor calcula `valor_centavos` a partir de
+        `excursao.preco_centavos` + `sinal_tipo`/`sinal_valor` quando
+        `tipo_pagamento = sinal`, ou do preço integral quando `integral`.
+        Um passageiro nunca pode informar o próprio valor a pagar.
+
+
+        Retorna a cobrança PIX quando a organização tem PIX ativo
+        (`configuracao_pix.ativo = true`) — implementação do
+        billing-specialist, fora deste contrato de reserva. Sem PIX
+        configurado (decisão 006), a reserva é criada normalmente com
+        `cobranca: null` e instruções para combinar o pagamento com o
+        organizador pelo WhatsApp.
       security: []
       parameters:
         - { name: codigo, in: path, required: true, schema: { type: string } }
@@ -81,7 +114,7 @@ paths:
               properties:
                 poltrona: { type: integer, minimum: 1 }
                 nome: { type: string, maxLength: 120 }
-                whatsapp: { type: string }
+                whatsapp: { type: string, description: 'Aceita DDD+número; normalizado para E.164 no servidor (mesma regra do cadastro rápido, whatsapp.util.ts).' }
                 cpf: { type: [string, 'null'] }
                 tipo_pagamento: { type: string, enum: [sinal, integral] }
                 ponto_embarque_id: { type: [string, 'null'], format: uuid }
@@ -90,38 +123,35 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ReservaPublicaCriada' }
-        '404':
-          description: Excursão indisponível (codigo `excursao_indisponivel`).
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Erro' }
+        '404': { $ref: '#/components/responses/ErroIndisponivel' }
         '409':
           description: >
             `poltrona_ocupada` (constraint no banco; detalhes.poltronas_livres
-            sugere alternativas) | `excursao_lotada` (reserva desabilitada na
-            hora) | `poltrona_bloqueada`.
+            sugere alternativas — é também a resposta natural quando a
+            excursão está `lotada`: toda poltrona válida já está ocupada) |
+            `poltrona_bloqueada` | `poltrona_inexistente` |
+            `excursao_nao_aceita_reserva` (excursão `rascunho`, `cancelada`
+            ou `concluida` — não deveria ocorrer via link público, já que
+            essas excursões respondem 404 antes de chegar aqui, mas o
+            service valida de novo por defesa em profundidade).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Erro' }
-        '422':
-          description: Dados inválidos (codigo `validacao`).
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Erro' }
-        '429':
-          description: Rate limit por IP (codigo `muitas_tentativas`).
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Erro' }
+        '422': { $ref: '#/components/responses/ErroValidacao' }
+        '429': { $ref: '#/components/responses/ErroMuitasTentativas' }
 
   /publico/reservas/{reservaId}:
     get:
       summary: Situação da reserva para o passageiro — PÚBLICO
       description: >
-        O UUID v7 da reserva funciona como capability (não enumerável; só
-        quem reservou recebeu o link). Retorna o MÍNIMO: status, poltrona,
-        prazo e instruções de pagamento. Usado pela tela de confirmação
-        (polling curto até o webhook confirmar).
+        O UUID v7 da reserva funciona como token de posse (não enumerável;
+        só quem reservou recebeu o link) — mesmo padrão de
+        `redefinir-senha` em identity: resolve a organização a partir da
+        PRÓPRIA linha da reserva, nunca de contexto ambiente. Retorna o
+        MÍNIMO: status, poltrona, prazo e instruções de pagamento — não
+        expõe outras reservas da mesma excursão. Usado pela tela de
+        confirmação (polling curto até o webhook do PIX confirmar, quando a
+        organização tem PIX ativo).
       security: []
       parameters:
         - { name: reservaId, in: path, required: true, schema: { type: string, format: uuid } }
@@ -130,10 +160,8 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SituacaoReservaPublica' }
-        '404':
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Erro' }
+        '404': { $ref: '#/components/responses/ErroNaoEncontrado' }
+        '429': { $ref: '#/components/responses/ErroMuitasTentativas' }
 
   /webhooks/pix/{provedor}:
     post:
@@ -171,6 +199,32 @@ paths:
               schema: { $ref: '#/components/schemas/Erro' }
 
 components:
+  responses:
+    ErroIndisponivel:
+      description: >
+        Excursão inexistente, de outra organização ou fora de
+        `publicada`/`lotada` (codigo `excursao_indisponivel`) — mesma
+        resposta para "não existe" e "existe mas não está publicada", para
+        não dar sinal de enumeração sobre `codigo_publico`s alheios.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+    ErroNaoEncontrado:
+      description: Reserva inexistente para este `reservaId` (codigo `nao_encontrado`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+    ErroValidacao:
+      description: Corpo inválido (codigo `validacao`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+    ErroMuitasTentativas:
+      description: Rate limit por IP excedido (codigo `muitas_tentativas`, header `Retry-After`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+
   schemas:
     Erro:
       type: object
@@ -186,8 +240,12 @@ components:
 
     ExcursaoPublica:
       type: object
-      description: Tudo que o passageiro precisa — e NADA de outros passageiros.
-      required: [codigo, destino, data_saida, data_retorno, tipo, preco_centavos, sinal_centavos, vagas_restantes, aceita_reserva, pontos_embarque]
+      description: >
+        Tudo que o passageiro precisa — e NADA de outros passageiros. Campos
+        nomeados como em `ExcursaoCard`/`Excursao` (`excursions.yaml`): mesmo
+        `vagas`/`capacidade` calculado (nunca de coluna), para o frontend
+        reaproveitar o mesmo componente de exibição de vagas.
+      required: [codigo, destino, data_saida, data_retorno, tipo, preco_centavos, sinal_centavos, vagas, capacidade, aceita_reserva, pontos_embarque]
       properties:
         codigo: { type: string }
         destino: { type: string }
@@ -201,10 +259,14 @@ components:
         fotos:
           type: array
           items: { type: string, description: URL da foto. }
-        vagas_restantes: { type: integer, description: Calculado — capacidade − reservas ativas. }
+        vagas: { type: integer, description: SEMPRE calculado (capacidade − reservas ativas), nunca de coluna. }
+        capacidade: { type: integer }
         aceita_reserva:
           type: boolean
-          description: false quando lotada — desabilita a reserva na hora (H3.2).
+          description: >
+            false quando `vagas = 0` (status `lotada`) — desabilita a
+            reserva na hora (H3.2) sem o front precisar conhecer o enum de
+            status da excursão.
         organizacao_nome: { type: string }
         pontos_embarque:
           type: array

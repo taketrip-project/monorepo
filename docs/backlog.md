@@ -151,12 +151,12 @@ Objetivo: cobrar sem correr atrás. Módulos: billing (exclusivo do billing-spec
 
 Objetivo: o passageiro reserva e paga sozinho pelo link; o MVP sai com suíte e2e e relatório de release.
 
-**H3.1** Como organizador, quero um link público da excursão para colar no WhatsApp e no Instagram.
+**H3.1** Como organizador, quero um link público da excursão para colar no WhatsApp e no Instagram. — **contrato desenhado (ADR 008, `docs/api/publico.yaml`), aguardando implementação**
 - [ ] Toda excursão `publicada` tem URL pública compartilhável; `rascunho` e `cancelada` retornam página de indisponível.
 - [ ] Página mostra: destino, data/hora, tipo, pontos de embarque com horários, preço, fotos, vagas restantes — sem expor dados de nenhum passageiro.
 - [ ] Abre rápido em celular 4G e tem preview decente ao colar o link no WhatsApp (título + imagem).
 
-**H3.2** Como passageiro, quero reservar e pagar o sinal pelo link, sem criar conta.
+**H3.2** Como passageiro, quero reservar e pagar o sinal pelo link, sem criar conta. — **contrato desenhado (ADR 008, `docs/api/publico.yaml`), aguardando implementação**
 - [ ] Fluxo: escolher poltrona livre no mapa → nome + WhatsApp (CPF opcional) → PIX do sinal ou integral → confirmação na tela. Zero criação de conta, zero senha.
 - [ ] A reserva nasce `pendente` com origem `pagina_publica` e segue exatamente as mesmas regras de poltrona única e expiração das reservas do organizador.
 - [ ] Excursão `lotada` desabilita a reserva na página pública na hora.
