@@ -16,6 +16,8 @@ Fonte completa: `frontend-guidelines.md` (raiz do repositório). Este resumo exi
 2. **Clareza** — status por cor + ícone/texto (nunca só cor).
 3. **Calor** — pt-BR informal, paleta quente, tipografia humanista. Parecer um colega, não um ERP.
 
+**Minimalismo tipográfico (regra, não sugestão):** peso 600/700 é só para hierarquia real (títulos, CTAs, valor de destaque em modo leitura). NUNCA em valor digitado dentro de um `<Input>` (sempre 400), texto corrido, ou texto repetido em massa numa lista. Aja como um especialista em UI/UX: na dúvida entre dois pesos, escolha o mais leve.
+
 ## Tokens essenciais
 - Fundo do app: `--tt-bg` #fffaf5 (nunca #fff puro). Superfície #ffffff, borda #ece7e0.
 - Primária: `--tt-primary` #ea580c (laranja) · pressed #c2410c · soft #fff1e3.
@@ -27,6 +29,9 @@ Fonte completa: `frontend-guidelines.md` (raiz do repositório). Este resumo exi
 
 ## Dimensões mínimas
 Toque ≥48px · botão primário de form 56px · input 52px (big 60) · linha de lista ≥64px · texto ≥13px mobile.
+
+## Scroll
+Todo container com overflow tem scroll funcional, mas a scrollbar fica **sempre oculta** (mobile-first — não há hover de scrollbar no celular). Ver `apps/web/src/index.css` (`scrollbar-width: none` + `::-webkit-scrollbar { display: none }` globais) — não reintroduzir scrollbar visível em nenhum componente novo.
 
 ## Componentes canônicos (não criar variações)
 Button (primary/secondary/soft/ghost/danger/success — **um** primary por tela) · Input (label 13/600 acima, erro inline abaixo, prefixo R$ em mono) · Badge (pill, UPPERCASE 11.5/600) · ListRow (avatar 40 + nome 15/600 + subtítulo 13 + badge + chevron) · ExcursionCard (badges, destino 19/600, data/hora, barra de progresso de vagas 6px) · BottomNav (Início · Excursões · Pagto · Mais; sem sidebar/hamburger) · SeatMap (poltrona 38×42, estados paid/pending/empty/selected/blocked, 2+corredor+2) · Sheet (handle 36×4) · FAB (pill com texto, right 16 / bottom 92).
@@ -46,3 +51,5 @@ pt-BR informal, imperativo curto em CTA ("Marcar embarcado"). Datas `Dom · 15 j
 - [ ] status com cor + ícone/texto — [ ] sem #fff de fundo — [ ] sem azul
 - [ ] números/datas em mono — [ ] motion ≤320ms sem bounce
 - [ ] pt-BR informal — [ ] só componentes canônicos — [ ] contraste ≥4.5:1 e foco visível
+- [ ] nenhum valor de `<Input>` em bold (sempre 400) — [ ] bold só em título/CTA/valor de destaque em leitura
+- [ ] nenhuma scrollbar visível introduzida (containers de overflow usam o padrão global oculto)

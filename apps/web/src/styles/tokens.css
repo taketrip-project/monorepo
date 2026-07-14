@@ -20,12 +20,12 @@
   --tt-ink-soft: #a8a29e; /* labels, legendas, ícones */
   --tt-ink-faint: #d6d3d1; /* chevrons, hairlines */
 
-  /* Marca */
-  --tt-primary: #ea580c; /* laranja-âmbar — ação primária */
-  --tt-primary-press: #c2410c; /* pressed/active */
-  --tt-primary-soft: #fff1e3; /* fundo de chips, badges primary */
-  --tt-accent: #fde68a; /* destaque sutil */
-  --tt-accent-ink: #78350f; /* texto sobre accent */
+  /* Marca — paleta teal em teste (07/07/2026), ver frontend-guidelines.md §1b */
+  --tt-primary: #0a9396; /* teal — ação primária */
+  --tt-primary-press: #067274; /* pressed/active — mais escuro e saturado */
+  --tt-primary-soft: #e5f5f5; /* fundo de chips, badges primary */
+  --tt-accent: #fbcdb6; /* destaque sutil — coral quente, quase complementar ao teal */
+  --tt-accent-ink: #7d2d12; /* texto sobre accent */
 
   /* Status — sempre cor + ícone/texto, nunca só cor */
   --tt-success: #15803d;
@@ -66,7 +66,7 @@
 
   /* Elevação — parcimoniosa; maioria das superfícies separa por borda */
   --tt-shadow-float: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.06);
-  --tt-shadow-primary: 0 4px 16px rgba(234, 88, 12, 0.35), 0 2px 4px rgba(234, 88, 12, 0.2);
+  --tt-shadow-primary: 0 4px 16px rgba(10, 147, 150, 0.35), 0 2px 4px rgba(10, 147, 150, 0.2);
   --tt-shadow-sticky: 0 8px 24px rgba(0, 0, 0, 0.18);
 
   /* Alvo de toque mínimo */

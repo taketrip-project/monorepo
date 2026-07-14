@@ -1,13 +1,34 @@
+/* O shell trava na altura do viewport pra que o <main> seja o scroller real
+   do app — e não o documento. Com `min-height` o shell crescia junto com o
+   conteúdo e quem rolava era o documento; o `overflow-y: auto` do main ainda
+   fazia dele o "scroll container" dos descendentes sticky, mas como ele
+   nunca rolava de fato, CTAs com `position: sticky; bottom` (ex.: barra
+   "Adicionar" do mapa de poltronas) nunca ativavam e ficavam fora da tela.
+   Bônus: a BottomNav agora fica sempre visível, como se espera no mobile. */
 .tt-app-shell {
-  min-height: 100dvh;
+  height: 100vh; /* fallback para browsers sem dvh */
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--tt-bg);
 }
 
+.tt-app-shell-topbar {
+  flex-shrink: 0;
+  padding: var(--tt-space-12) var(--tt-space-16);
+  border-bottom: 1px solid var(--tt-border);
+}
+
 .tt-app-shell-main {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  /* Scroll funcional sem barra visível — produto mobile-first. */
+  scrollbar-width: none;
+}
+
+.tt-app-shell-main::-webkit-scrollbar {
+  display: none;
 }
 
 /* Placeholder mínimo de telas ainda não implementadas (Início, Excursões) —

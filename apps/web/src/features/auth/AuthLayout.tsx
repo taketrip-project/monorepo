@@ -17,6 +17,7 @@ export function AuthLayout({ title, subtitle, children }: AuthLayoutProps) {
   return (
     <div className="tt-auth-layout">
       <div className="tt-auth-card">
+        <span className="tt-wordmark">taketrip</span>
         <h1 className="tt-auth-title">{title}</h1>
         {subtitle && <p className="tt-auth-subtitle">{subtitle}</p>}
         {children}

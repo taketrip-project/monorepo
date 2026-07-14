@@ -30,6 +30,9 @@ export function AppShell() {
 
   return (
     <div className="tt-app-shell">
+      <header className="tt-app-shell-topbar">
+        <span className="tt-wordmark">taketrip</span>
+      </header>
       <main className="tt-app-shell-main">
         <Outlet />
       </main>

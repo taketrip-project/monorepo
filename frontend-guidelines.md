@@ -37,12 +37,12 @@
   --tt-ink-soft:   #a8a29e;    /* labels, legendas, ícones */
   --tt-ink-faint:  #d6d3d1;    /* chevrons, hairlines */
 
-  /* Marca */
-  --tt-primary:        #ea580c;  /* laranja-âmbar — ação primária */
-  --tt-primary-press:  #c2410c;  /* estado pressed/active */
-  --tt-primary-soft:   #fff1e3;  /* fundo de chips, badges primary */
-  --tt-accent:         #fde68a;  /* destaque sutil */
-  --tt-accent-ink:     #78350f;  /* texto sobre accent */
+  /* Marca — teal em teste (ver §1b) */
+  --tt-primary:        #0a9396;  /* teal — ação primária */
+  --tt-primary-press:  #067274;  /* estado pressed/active */
+  --tt-primary-soft:   #e5f5f5;  /* fundo de chips, badges primary */
+  --tt-accent:         #fbcdb6;  /* destaque sutil — coral quente */
+  --tt-accent-ink:     #7d2d12;  /* texto sobre accent */
 
   /* Status */
   --tt-success:        #15803d;
@@ -58,9 +58,38 @@
 
 - **Fundo do app:** `--tt-bg`, nunca `#fff` puro. O calor da base é parte da identidade.
 - **Texto sobre fundos coloridos:** use o `*-soft` correspondente como fundo e a cor "forte" como texto (ex.: `bg: success-soft`, `text: success`).
-- **Evite azuis frios.** Não introduza azul nem para informativo — use `--tt-ink-mute`.
+- **Evite azuis frios.** Não introduza azul nem para informativo — use `--tt-ink-mute`. Exceção deliberada: `--tt-primary` (teal, ver §1b) fica no limite ciano/verde-azulado por pedido explícito de teste — os tokens de apoio (texto, superfície) continuam neutros e quentes para o produto não esfriar como um todo.
 - **Cores de status são funcionais, não decorativas.** Não use `success` apenas porque "fica bonito".
 - Nunca invente nova cor sem adicioná-la à tabela acima.
+
+### 1b · Paleta teal — fundamentação (teste, 07/07/2026)
+
+A paleta laranja original não combinou tematicamente com "excursão/turismo" na avaliação do Matheus. Esta seção documenta a paleta alternativa gerada a partir de `#0A9396` como `--tt-primary`, produzida seguindo teoria das cores (não é escolha arbitrária) — **status: em teste**, ainda não é definitiva até validação visual.
+
+**Harmonia:** `#0A9396` é HSL(181°, 87%, 31%) — um teal saturado e escuro, na fronteira entre ciano e verde-azulado. Evoca água/litoral/estrada, temática natural para viagem — mais alinhado ao produto do que o laranja corporativo-quente anterior. Para `--tt-accent`, em vez de outro tom quente aleatório, usei o **quase-complementar** do teal (a roda de cores coloca o complemento de 181° perto de 1°, um vermelho-coral) — isso mantém o "calor humano" do produto (princípio 03) mesmo com uma marca mais fria, e cria contraste vivo sem recorrer a azul ou a decisões desconectadas de teoria de cor.
+
+**Escala derivada do primary** (mesma lógica de antes — só a base mudou):
+- `--tt-primary-press` = teal mais escuro/saturado (L 31%→24%, S 87%→90%) para estado pressed.
+- `--tt-primary-soft` = tint quase-branco do mesmo hue (L→93%, S→45%) para fundo de chip/badge.
+- `--tt-accent` = tint claro do coral complementar (H 20°, S 90%, L 85%); `--tt-accent-ink` = a versão escura e saturada do mesmo hue (H 15°, S 75%, L 28%) para texto legível sobre ele.
+
+**Superfícies e texto (`--tt-bg`, `--tt-ink*`) não mudaram** — propositalmente. Área grande de tela não deve carregar o hue da marca; só marca/destaque devem. Isso também limita o risco de o produto esfriar visualmente como um todo.
+
+**Contraste verificado (WCAG 2.1, fórmula de luminância relativa, calculado — não estimado):**
+
+| Combinação real usada no produto | Contraste | Critério | Resultado |
+|---|---|---|---|
+| `--tt-ink` (#1c1917) sobre `--tt-bg` (#fffaf5) | ~15.8:1 | 4.5:1 (texto normal) | ✅ inalterado |
+| `--tt-primary-press` (#067274) sobre `--tt-primary-soft` (#e5f5f5) | 5.11:1 | 4.5:1 | ✅ passa |
+| `--tt-accent-ink` (#7d2d12) sobre `--tt-accent` (#fbcdb6) | 6.43:1 | 4.5:1 | ✅ passa |
+| `--tt-ink` (#1c1917) sobre `--tt-primary` (#0a9396) | 4.69:1 | 4.5:1 | ✅ passa (margem pequena) |
+| `#fff` sobre `--tt-primary` (#0a9396) — **botão primário atual** | 3.73:1 | 4.5:1 (texto normal) | ⚠️ não passa |
+| `--tt-primary` (#0a9396) sobre `--tt-bg` (#fffaf5) — **link de texto (ex.: "Esqueci a senha")** | 3.60:1 | 4.5:1 (texto normal) | ⚠️ não passa |
+
+**Achado que precisa de decisão antes de promover a paleta a definitiva:** o `--tt-primary` deste teal tem luminância relativa (~31% de lightness) que não sobra margem suficiente pra 4.5:1 nem como texto branco em cima dele (botão), nem como texto colorido em cima do fundo claro (link). **Isto NÃO é uma regressão** — o laranja anterior (`#ea580c`) calculava 3.56:1 (branco no botão) e 3.43:1 (texto no fundo), no mesmo patamar — já era dívida de acessibilidade pré-existente em ambos os casos, só não tinha sido medida antes. Confirmado visualmente (screenshot da tela de login): o teal é legível na prática, mas fica no limite. Três saídas possíveis, nenhuma aplicada ainda (decisão do Matheus/cto antes de sair do teste):
+1. Manter como está (aceitar a dívida, documentada, igual já era antes).
+2. Escurecer levemente `--tt-primary` (reduzir lightness uns 4–6 pontos) só o suficiente pra cruzar 4.5:1 nos dois casos, sem descaracterizar o tom pedido.
+3. Trocar botão primário para peso 700 (passa a valer "texto grande" a 3:1) e trocar links de `--tt-primary` para `--tt-primary-press` (mais escuro, sobra folga: 5.53:1 no fundo).
 
 ---
 
@@ -127,10 +156,11 @@
 | Display | 36px | 600 | 1.1 | -0.025em | Títulos de página grande |
 | Title | 22px | 600 | 1.2 | -0.015em | Cabeçalho de seção |
 | Heading | 18px | 600 | 1.25 | -0.01em | Cabeçalho de card |
-| Body LG | 16px | 500 | 1.4 | 0 | Nome do passageiro, valor de destaque |
+| Body LG | 16px | 500 | 1.4 | 0 | Nome do passageiro, valor de destaque (texto **estático**, não editável) |
 | Body | 14px | 400 | 1.5 | 0 | Texto corrido |
+| Input | 16px | **400** | 1.4 | 0 | Valor digitado dentro de um `<Input>` |
 | Label | 12px | 600 | 1.2 | 0.04em (UPPERCASE) | Tags, badges, eyebrow |
-| Mono | 14px | 500 | 1.4 | 0 | R$, horários, IDs |
+| Mono | 14px | 500 | 1.4 | 0 | R$, horários, IDs (texto **estático**) |
 
 ### Diretrizes
 
@@ -138,6 +168,7 @@
 - Use `font-feature-settings: 'ss01', 'cv01'` se quiser ativar features do Trip Sans; opcional.
 - Letter-spacing **negativo** apenas em ≥22px. Em texto pequeno, deixe 0.
 - Acentuação portuguesa: testar `ã, õ, ç` — confirmar cobertura de glifos do Trip Sans; nunca substituir por system-ui.
+- **Minimalismo tipográfico (regra geral, não só da escala acima):** peso 600/700 é para hierarquia real — títulos, CTAs, valores de destaque em modo leitura. Ele NUNCA aparece em: (a) valor digitado dentro de um input (sempre 400 — o usuário está digitando, não lendo um resultado), (b) texto corrido, (c) qualquer elemento repetido em massa numa lista (evita a tela inteira "gritando"). Na dúvida entre dois pesos, escolha o mais leve — é mais fácil aumentar peso depois numa revisão do que uma tela nascer pesada demais. Isso vale tanto para o `frontend-engineer` implementar quanto para o `code-reviewer` cobrar em revisão.
 
 ---
 
@@ -489,7 +520,7 @@ Linha horizontal scrollável quando passa de 4 chips.
 
 ## 11 · Acessibilidade
 
-- **Contraste mínimo 4.5:1** para texto corrido. Todos os pares já testados acima passam.
+- **Contraste mínimo 4.5:1** para texto corrido. Pares testados em §1b — uma exceção conhecida e documentada (texto branco no botão primário sobre o teal, 3.73:1) segue em aberto, não é regressão da paleta anterior.
 - Alvos de toque **≥48px** (visto na seção de espaçamento).
 - Foco visível em todos os elementos interativos: outline de 2px sólido `--tt-primary`, offset 2px.
 - Ícones decorativos: `aria-hidden="true"`. Ícones que carregam significado (status): `aria-label` claro.
@@ -502,7 +533,7 @@ Linha horizontal scrollável quando passa de 4 chips.
 Versão escura está prevista para uso noturno (embarques de madrugada), mas **não está finalizada**. Quando construir:
 
 - Manter o caráter quente — base `oklch(0.18 0.012 60)` ou similar, não `#0a0a0a` puro.
-- Laranja `--tt-primary` continua igual; o resto inverte conservadoramente.
+- `--tt-primary` continua igual; o resto inverte conservadoramente.
 - Sombras viram bordas (`border: 1px solid rgba(255,255,255,.08)`).
 
 ---

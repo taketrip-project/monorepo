@@ -29,6 +29,20 @@ body {
   flex-direction: column;
 }
 
+/*
+ * Scrollbar oculta em qualquer container com overflow — produto é
+ * mobile-first (celular não tem hover de scrollbar); o scroll continua
+ * funcionando normalmente, só o indicador visual de desktop some.
+ */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
 /* Foco visível em todo elemento interativo — acessibilidade §11 */
 :focus-visible {
   outline: 2px solid var(--tt-primary);
@@ -40,6 +54,21 @@ body {
 /* Datas/horários/valores sempre em Trip Sans Mono (frontend-guidelines §10). */
 .tt-mono {
   font-family: var(--tt-mono);
+}
+
+/*
+ * Wordmark do produto (nome "taketrip") — não existe símbolo/ícone de marca
+ * ainda (nenhum logo foi entregue pelo time de design até 07/07/2026), só
+ * o nome. Minúsculo, peso 600 (não 700 — é marca, não título de leitura),
+ * cor da marca. Reaproveitado no AppShell (área autenticada) e AuthLayout
+ * (telas públicas de auth) — os dois únicos lugares "de entrada" do produto.
+ */
+.tt-wordmark {
+  font-family: var(--tt-font);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--tt-primary);
 }
 
 /* Campo multilinha (descrição, motivo) — não há um componente TextArea
