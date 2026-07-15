@@ -200,3 +200,35 @@ Repro: `POST /excursoes` com `data_retorno` < `data_saida` → 201. Nenhuma vali
 ## Reprodução
 
 Scripts e evidências da rodada (fora do repositório): `e2e.sh`, `e2e2.sh`, `shots*.mjs` + screenshots 375px e logs `e2e*-evidencias.log` no scratchpad da sessão de QA. Setup usado: `.env` da raiz, `npm run db:up && npm run db:migrate && npm run db:seed`, `npm run dev`.
+
+## Aceite do cto
+
+> **cto** · 15/07/2026 · sobre o `main` com os fixes aplicados (commits `2311d00` e `bda5f95`)
+
+**Decisão: ACEITO. A Fase 1 (núcleo operacional) está FECHADA.** Registro formal em `docs/decisions/009-aceite-fase-1.md`.
+
+**Estado dos 5 não-bloqueantes** — todos resolvidos e verificados:
+
+| # | Resolução |
+|---|---|
+| NB-1 | `2311d00` — guard confere sessão+membro no banco a cada request; remoção/logout/redefinição derrubam o acesso na hora. Tolerância de 30s **apenas** para sessão revogada por rotação legítima de refresh (mesma janela que o `AuthService.refresh` já usava para corrida entre abas) — **risco aceito pelo cto**: não enfraquece o caso do ex-membro. Coberto por testes unitários e de integração novos |
+| NB-2 | `bda5f95` (rodada de design: shell em 100dvh, `main` como scroller real) — verificado em 15/07 em browser real 375×812: barra sticky visível sem scroll |
+| NB-3 | `2311d00` — atalho no Início + deep-link `?aba=&visao=` |
+| NB-4 | `2311d00` — `validarCoerenciaDatas` rejeita retorno anterior à saída |
+| NB-5 | `2311d00` — `/health` com `@Public()`, teste de integração novo |
+
+Suítes em 15/07/2026, tudo verde: lint 0 erros/0 warnings; unit api 83/83; unit web 155/155; integração 98/98; build api+web ok.
+
+**Itens fora de escopo da verificação** — nenhum impede o fecho:
+
+- **E-mail real (SES)**: fluxos validados com token via banco; a entrega real vira item obrigatório do checklist pré-produção (deploy em produção já exige aprovação humana por governança).
+- **CI (item 1.0)**: não bloqueia o aceite funcional — suítes verdes localmente. Vira **dívida prioritária: subir o pipeline antes de qualquer código da Fase 2 (dinheiro)**.
+- **Dispositivo físico / 3G real**: segue o fluxo operacional acordado — validação manual do Matheus.
+- **Página pública / PIX / webhook / expiração**: fases 2/3 por definição de escopo.
+
+**Observações menores** — viram itens de backlog da rodada de polimento (nenhuma reaberta como bug):
+
+1. Mensagens de validação de DTO em pt-BR informal (viola regra transversal de microcopy; corrigir no polimento).
+2. Rótulo "ABERTA" para o estado `publicada`: o termo **não consta no glossário do domínio**. Decidir no polimento entre alinhar a exibição ao glossário ou homologar "Aberta" no `dominio-excursoes` (tendência do cto: homologar "Aberta" — é a língua do organizador — mas só com o glossário atualizado junto).
+3. Busca com termo não percent-encoded → 400 sem envelope de erro (robustez de API, baixa prioridade).
+4. Input "Valor" `type=number` (ponto vs vírgula durante edição) e datas nativas dependentes do locale: registrar no design system e tratar junto do redesign das telas.
