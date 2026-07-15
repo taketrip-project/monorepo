@@ -18,12 +18,12 @@ import { hashSenha, verificarSenha } from './senha.util';
 import { gerarTokenAleatorio, hashToken } from './token.util';
 import { calcularBloqueio, segundosRestantes } from './forca-bruta.util';
 import { SessaoInvalidaException, TokenInvalidoException, ConviteInvalidoException } from './exceptions';
+import { JANELA_TOLERANCIA_CORRIDA_MS } from './sessao.constants';
 import { TenantContextStorage } from '../../../common/tenant-context';
 
 const ACCESS_TOKEN_TTL_SEGUNDOS = 15 * 60;
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
-const JANELA_TOLERANCIA_CORRIDA_MS = 30 * 1000;
 
 /** Tipo mínimo comum entre `Database` e uma transação (`tx`) do Drizzle. */
 type DbOuTx = Pick<Database, 'select' | 'insert' | 'update' | 'delete'>;

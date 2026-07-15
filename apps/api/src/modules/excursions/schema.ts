@@ -22,7 +22,6 @@
  * - `codigo_publico`: identificador curto e não sequencial da página pública
  *   (H3.1) — o link compartilhável não expõe o UUID interno.
  */
-import { sql } from 'drizzle-orm';
 import {
   boolean,
   index,

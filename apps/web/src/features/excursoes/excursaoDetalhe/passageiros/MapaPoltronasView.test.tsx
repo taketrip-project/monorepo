@@ -46,6 +46,11 @@ describe('MapaPoltronasView', () => {
     fireEvent.click(poltrona1);
 
     expect(await screen.findByText(/selecionada/)).toBeInTheDocument();
+    // A barra precisa do hook `.tt-passageiros-mapa-sticky`: é o CSS dela
+    // (position: sticky; bottom) que a mantém visível sem scroll dentro do
+    // scroller do app (main.tt-app-shell-main) — regra "ação primária sem
+    // scroll" (NB-2 do QA da fase 1).
+    expect(screen.getByText(/selecionada/).closest('.tt-passageiros-mapa-sticky')).not.toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Adicionar' }));
     expect(onAbrirCadastro).toHaveBeenCalledWith(1);
   });

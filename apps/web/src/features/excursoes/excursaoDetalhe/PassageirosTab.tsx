@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../../../lib/api/client';
 import { baixarListaImpressao, type Reserva } from '../../../lib/api/bookings';
 import { obterExcursao, type Excursao } from '../../../lib/api/excursions';
@@ -18,6 +18,11 @@ const VIEWS: { key: ViewKey; label: string }[] = [
   { key: 'embarque', label: 'Embarque' },
 ];
 
+/** View inicial endereçável por URL (`?visao=embarque`) — usada pelo atalho "Lista de embarque" do Início (H1.14). */
+function viewInicial(param: string | null): ViewKey {
+  return VIEWS.some((view) => view.key === param) ? (param as ViewKey) : 'lista';
+}
+
 interface PassageirosTabProps {
   excursaoId: string;
   precoDefaultCentavos: number;
@@ -34,7 +39,8 @@ interface PassageirosTabProps {
  */
 export function PassageirosTab({ excursaoId, precoDefaultCentavos, onExcursaoAtualizada }: PassageirosTabProps) {
   const navigate = useNavigate();
-  const [view, setView] = useState<ViewKey>('lista');
+  const [searchParams] = useSearchParams();
+  const [view, setView] = useState<ViewKey>(() => viewInicial(searchParams.get('visao')));
   const [refreshKey, setRefreshKey] = useState(0);
 
   const [cadastroAberto, setCadastroAberto] = useState(false);

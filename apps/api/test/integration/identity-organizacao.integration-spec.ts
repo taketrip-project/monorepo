@@ -156,12 +156,20 @@ describe('identity: /organizacao* (banco real)', () => {
 
       const colegaAccessToken = aceite.body.tokens.access_token as string;
       const colegaRefreshToken = aceite.body.tokens.refresh_token as string;
+      const colegaCliente = autenticado(colegaAccessToken);
+
+      // Antes da remoção o colega opera normalmente com o access token.
+      await colegaCliente.get('/api/v1/organizacao/membros').expect(200);
 
       await donoCliente.delete(`/api/v1/organizacao/membros/${aceite.body.membro.id}`).expect(204);
 
-      // O access token do colega ainda é válido por até 15min (JWT sem estado),
-      // mas o refresh — usado para renovar — já está revogado (efeito imediato
-      // para novas requisições autenticadas por refresh, conforme ADR 004).
+      // H1.3 (NB-1 do QA): o access token ANTIGO do removido é rejeitado na
+      // requisição seguinte — o guard confere a sessão no banco, não espera
+      // o JWT de 15 min expirar.
+      const comAccessAntigo = await colegaCliente.get('/api/v1/organizacao/membros').expect(401);
+      expect(comAccessAntigo.body.erro.codigo).toBe('nao_autenticado');
+
+      // O refresh — usado para renovar — também já está revogado.
       await http()
         .post('/api/v1/auth/refresh')
         .send({ refresh_token: colegaRefreshToken })
@@ -170,9 +178,6 @@ describe('identity: /organizacao* (banco real)', () => {
       // O colega removido some da listagem de membros.
       const membros = await donoCliente.get('/api/v1/organizacao/membros').expect(200);
       expect(membros.body).toHaveLength(1);
-
-      // sanity: o access token do colega ainda decodifica (não usado aqui além do refresh).
-      expect(colegaAccessToken).toEqual(expect.any(String));
     });
 
     it('caso de borda: não é possível remover o último membro da organização', async () => {

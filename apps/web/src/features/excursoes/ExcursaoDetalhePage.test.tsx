@@ -62,10 +62,10 @@ function excursaoBase(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-function renderPagina() {
+function renderPagina(rota = '/excursoes/e1') {
   return render(
     <ToastProvider>
-      <MemoryRouter initialEntries={['/excursoes/e1']}>
+      <MemoryRouter initialEntries={[rota]}>
         <Routes>
           <Route path="/excursoes/:id" element={<ExcursaoDetalhePage />} />
           <Route path="/excursoes" element={<div>Tela de lista</div>} />
@@ -249,5 +249,44 @@ describe('ExcursaoDetalhePage', () => {
 
     expect(screen.getByRole('tab', { name: 'Passageiros' })).toHaveAttribute('aria-selected', 'true');
     expect(await screen.findByText(/Toque numa poltrona livre no Mapa/)).toBeInTheDocument();
+  });
+
+  it('deep link ?aba=passageiros&visao=embarque abre direto a lista de embarque (atalho do Início, H1.14)', async () => {
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce(jsonResponse(excursaoBase({ status: 'publicada' })));
+    fetchMock.mockResolvedValueOnce(jsonResponse(VEICULOS_RESPOSTA));
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        excursao_id: 'e1',
+        embarcados: 0,
+        total: 1,
+        grupos: [
+          {
+            ponto_embarque: { id: 'p1', local: 'Praça Central', horario: '2026-06-15T05:00:00-03:00', ordem: 1 },
+            passageiros: [{ reserva_id: 'r1', nome: 'Maria Silva', poltrona: 5, embarcada: false, embarcada_em: null }],
+          },
+        ],
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderPagina('/excursoes/e1?aba=passageiros&visao=embarque');
+    await screen.findByText('Serra Fina');
+
+    expect(screen.getByRole('tab', { name: 'Passageiros' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Embarque' })).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByText('0/1 embarcaram')).toBeInTheDocument();
+  });
+
+  it('deep link com aba/visao desconhecidas cai no padrão (Detalhes)', async () => {
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce(jsonResponse(excursaoBase()));
+    fetchMock.mockResolvedValueOnce(jsonResponse(VEICULOS_RESPOSTA));
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderPagina('/excursoes/e1?aba=banana&visao=banana');
+    await screen.findByText('Serra Fina');
+
+    expect(screen.getByRole('tab', { name: 'Detalhes' })).toHaveAttribute('aria-selected', 'true');
   });
 });

@@ -79,6 +79,7 @@ export class ExcursionsService {
 
   async criar(dto: CriarExcursaoDto) {
     const ctx = TenantContextStorage.get();
+    this.validarCoerenciaDatas(dto.data_saida, dto.data_retorno);
     const veiculoRow = await this.buscarVeiculoOuFalhar(dto.veiculo_id);
     const { sinalTipo, sinalValor } = await this.resolverSinalEntrada(
       dto.sinal_tipo,
@@ -117,6 +118,7 @@ export class ExcursionsService {
 
   async atualizar(excursaoId: string, dto: AtualizarExcursaoDto) {
     const ctx = TenantContextStorage.get();
+    this.validarCoerenciaDatas(dto.data_saida, dto.data_retorno);
     const { row: atual } = await this.buscarExcursaoOuFalhar(excursaoId);
     const novoVeiculo = await this.buscarVeiculoOuFalhar(dto.veiculo_id);
 
@@ -501,6 +503,26 @@ export class ExcursionsService {
       .limit(1);
 
     return { sinalTipo, sinalValor: org?.sinalDefaultPercentual ?? 50 };
+  }
+
+  /**
+   * Coerência entre as datas (H1.5, NB-4 do QA): retorno anterior à saída é
+   * dado inválido → 422 no envelope padrão de validação. Igualdade é aceita
+   * (bate-volta relâmpago com horários no mesmo instante não é incoerência
+   * de ordem). Regra cross-field vive no service, como as demais regras de
+   * negócio (mesmo padrão de `resolverSinalEntrada`).
+   */
+  private validarCoerenciaDatas(dataSaida: string, dataRetorno: string): void {
+    if (new Date(dataRetorno).getTime() < new Date(dataSaida).getTime()) {
+      const mensagem = 'A data de retorno não pode ser anterior à data de saída.';
+      throw new UnprocessableEntityException({
+        erro: {
+          codigo: 'validacao',
+          mensagem,
+          detalhes: { campos: [{ campo: 'data_retorno', mensagens: [mensagem] }] },
+        },
+      });
+    }
   }
 
   private urlPublicaBase(): string {

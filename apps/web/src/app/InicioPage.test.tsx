@@ -1,7 +1,18 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { InicioPage } from './InicioPage';
+
+/** Destino fake do detalhe que expõe a query string pra asserção do deep link. */
+function TelaDetalheFake() {
+  const location = useLocation();
+  return (
+    <div>
+      <p>Tela de detalhe</p>
+      <p data-testid="detalhe-query">{location.search}</p>
+    </div>
+  );
+}
 
 function jsonResponse(body: unknown, init: ResponseInit = {}) {
   return new Response(JSON.stringify(body), {
@@ -31,7 +42,7 @@ function renderPagina() {
       <Routes>
         <Route path="/" element={<InicioPage />} />
         <Route path="/excursoes/nova" element={<div>Tela de nova excursão</div>} />
-        <Route path="/excursoes/:id" element={<div>Tela de detalhe</div>} />
+        <Route path="/excursoes/:id" element={<TelaDetalheFake />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -59,6 +70,19 @@ describe('InicioPage', () => {
 
     fireEvent.click(screen.getByText('Serra Fina'));
     expect(await screen.findByText('Tela de detalhe')).toBeInTheDocument();
+    // Toque no card continua indo pro detalhe puro, sem deep link.
+    expect(screen.getByTestId('detalhe-query').textContent).toBe('');
+  });
+
+  it('tem atalho de 1 toque pra lista de embarque da próxima excursão (H1.14)', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ proxima_excursao: PROXIMA_EXCURSAO }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderPagina();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Lista de embarque' }));
+    expect(await screen.findByText('Tela de detalhe')).toBeInTheDocument();
+    expect(screen.getByTestId('detalhe-query')).toHaveTextContent('?aba=passageiros&visao=embarque');
   });
 
   it('mostra estado vazio acolhedor quando não há próxima excursão', async () => {

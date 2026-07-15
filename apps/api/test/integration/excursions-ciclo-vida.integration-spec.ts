@@ -160,6 +160,32 @@ describe('excursions: /excursoes* (banco real)', () => {
       expect(resposta.body.erro.codigo).toBe('validacao');
     });
 
+    it('caso de borda: data_retorno anterior à data_saida retorna 422 com mensagem clara (NB-4)', async () => {
+      const cliente = await autenticarNovaOrg('A');
+      const veiculo = await criarVeiculo(cliente);
+
+      const resposta = await cliente
+        .post('/api/v1/excursoes')
+        .send(
+          payloadExcursao(veiculo.id, {
+            data_saida: '2026-12-10T08:00:00.000Z',
+            data_retorno: '2026-12-09T20:00:00.000Z',
+          }),
+        )
+        .expect(422);
+
+      expect(resposta.body.erro.codigo).toBe('validacao');
+      expect(resposta.body.erro.mensagem).toBe(
+        'A data de retorno não pode ser anterior à data de saída.',
+      );
+      expect(resposta.body.erro.detalhes.campos).toEqual([
+        {
+          campo: 'data_retorno',
+          mensagens: ['A data de retorno não pode ser anterior à data de saída.'],
+        },
+      ]);
+    });
+
     it('caso de borda: veículo inexistente na organização retorna 404', async () => {
       const cliente = await autenticarNovaOrg('A');
 
@@ -404,6 +430,30 @@ describe('excursions: /excursoes* (banco real)', () => {
         ponto_equilibrio_pagos: 26,
         pagos_atuais: 0, // STUB DE RESERVAS
       });
+    });
+
+    it('caso de borda: PATCH com data_retorno anterior à data_saida retorna 422 e não altera nada (NB-4)', async () => {
+      const cliente = await autenticarNovaOrg('A');
+      const veiculo = await criarVeiculo(cliente);
+      const criada = await cliente
+        .post('/api/v1/excursoes')
+        .send(payloadExcursao(veiculo.id))
+        .expect(201);
+
+      const resposta = await cliente
+        .patch(`/api/v1/excursoes/${criada.body.id}`)
+        .send(
+          payloadExcursao(veiculo.id, {
+            data_saida: '2026-12-10T08:00:00.000Z',
+            data_retorno: '2026-12-09T20:00:00.000Z',
+          }),
+        )
+        .expect(422);
+      expect(resposta.body.erro.codigo).toBe('validacao');
+
+      // As datas originais permanecem intactas.
+      const depois = await cliente.get(`/api/v1/excursoes/${criada.body.id}`).expect(200);
+      expect(depois.body.data_retorno).toBe('2026-12-10T20:00:00.000Z');
     });
   });
 

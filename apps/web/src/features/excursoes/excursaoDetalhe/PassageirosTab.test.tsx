@@ -69,9 +69,9 @@ const EXCURSAO_BASE = {
   criado_em: '2026-01-01T00:00:00Z',
 };
 
-function renderTab(onExcursaoAtualizada = vi.fn()) {
+function renderTab(onExcursaoAtualizada = vi.fn(), rota = '/excursoes/e1') {
   return render(
-    <MemoryRouter initialEntries={['/excursoes/e1']}>
+    <MemoryRouter initialEntries={[rota]}>
       <Routes>
         <Route
           path="/excursoes/:id"
@@ -102,6 +102,30 @@ describe('PassageirosTab', () => {
 
     expect(await screen.findByText(/Toque numa poltrona livre no Mapa/)).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Lista' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('abre direto na view Embarque quando a URL traz ?visao=embarque (atalho do Início, H1.14)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce(
+        jsonResponse({
+          excursao_id: 'e1',
+          embarcados: 0,
+          total: 1,
+          grupos: [
+            {
+              ponto_embarque: { id: 'p1', local: 'Praça Central', horario: '2026-06-15T05:00:00-03:00', ordem: 1 },
+              passageiros: [{ reserva_id: 'r1', nome: 'Maria Silva', poltrona: 5, embarcada: false, embarcada_em: null }],
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderTab(vi.fn(), '/excursoes/e1?visao=embarque');
+
+    expect(await screen.findByText('0/1 embarcaram')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Embarque' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('navega pra ficha da reserva ao tocar numa linha da Lista', async () => {

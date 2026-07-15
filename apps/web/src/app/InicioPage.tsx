@@ -53,6 +53,15 @@ export function InicioPage() {
             {...excursaoParaCardProps(proximaExcursao)}
             onClick={() => navigate(`/excursoes/${proximaExcursao.id}`)}
           />
+          {/* Atalho de 1 toque pro dia da viagem (H1.14): abre direto a view
+              Embarque da aba Passageiros, sem passar pelo detalhe. */}
+          <Button
+            variant="secondary"
+            fullWidth
+            onClick={() => navigate(`/excursoes/${proximaExcursao.id}?aba=passageiros&visao=embarque`)}
+          >
+            Lista de embarque
+          </Button>
         </>
       )}
 

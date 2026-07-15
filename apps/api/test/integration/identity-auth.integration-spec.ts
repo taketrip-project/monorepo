@@ -197,6 +197,34 @@ describe('identity: /auth/* (banco real)', () => {
       expect(primeira.body.refresh_token).not.toBe(segunda.body.refresh_token);
     });
 
+    it('access token da sessão recém-rotacionada continua aceito na janela de corrida (requisição em voo)', async () => {
+      const { resposta } = await registrar();
+      const accessAntigo = resposta.body.tokens.access_token as string;
+      const refreshOriginal = resposta.body.tokens.refresh_token as string;
+
+      await http()
+        .post('/api/v1/auth/refresh')
+        .send({ refresh_token: refreshOriginal })
+        .expect(200);
+
+      // O guard tolera o access token da sessão rotacionada há segundos —
+      // sem isso, toda rotação derrubaria requisições em voo com 401.
+      await http()
+        .get('/api/v1/organizacao')
+        .set('Authorization', `Bearer ${accessAntigo}`)
+        .expect(200);
+
+      // Fora da janela de 30s a tolerância acaba, mesmo com JWT ainda válido.
+      await ctx.db.execute(
+        sql`UPDATE sessao SET revogada_em = now() - interval '60 seconds' WHERE refresh_token_hash = ${hashToken(refreshOriginal)}`,
+      );
+      const foraDaJanela = await http()
+        .get('/api/v1/organizacao')
+        .set('Authorization', `Bearer ${accessAntigo}`)
+        .expect(401);
+      expect(foraDaJanela.body.erro.codigo).toBe('nao_autenticado');
+    });
+
     it('refresh token desconhecido retorna 401 sessao_invalida', async () => {
       const resposta = await http()
         .post('/api/v1/auth/refresh')
@@ -221,6 +249,14 @@ describe('identity: /auth/* (banco real)', () => {
         .send({ refresh_token })
         .expect(401);
       expect(depoisDoLogout.body.erro.codigo).toBe('sessao_invalida');
+
+      // O access token também cai NA HORA — logout revoga sem rotação
+      // (`substituidaPorId` vazio), então não há janela de tolerância.
+      const comAccessAntigo = await http()
+        .get('/api/v1/organizacao')
+        .set('Authorization', `Bearer ${access_token}`)
+        .expect(401);
+      expect(comAccessAntigo.body.erro.codigo).toBe('nao_autenticado');
     });
 
     it('caso de borda: sem token de autenticação retorna 401', async () => {

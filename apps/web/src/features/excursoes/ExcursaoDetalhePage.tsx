@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Button, ExcursionCard, Input, Sheet, useToast } from '../../ui';
 import { ApiError } from '../../lib/api/client';
 import {
@@ -30,6 +30,11 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'checklist', label: 'Checklist legal' },
 ];
 
+/** Aba inicial endereçável por URL (`?aba=passageiros`) — permite atalhos de 1 toque, como o do Início pro embarque (H1.14). */
+function tabInicial(param: string | null): TabKey {
+  return TABS.some((tab) => tab.key === param) ? (param as TabKey) : 'detalhes';
+}
+
 /**
  * Detalhe da excursão (H1.5–H1.7, H3.4, H3.5). Este componente cuida só do
  * que é transversal às abas — carregar a excursão, a aba ativa, e o ciclo
@@ -41,12 +46,13 @@ const TABS: { key: TabKey; label: string }[] = [
 export function ExcursaoDetalhePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { mostrarToast } = useToast();
 
   const [excursao, setExcursao] = useState<Excursao | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erroCarregar, setErroCarregar] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabKey>('detalhes');
+  const [activeTab, setActiveTab] = useState<TabKey>(() => tabInicial(searchParams.get('aba')));
 
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
 
