@@ -1,17 +1,94 @@
+# CI do Taketrip — dívida prioritária da decisão 009: pipeline sobe antes
+# de qualquer código da Fase 2. Roda as mesmas suítes do aceite da Fase 1
+# (lint api+web, unit api, testes web, integração com Postgres real, builds),
+# em jobs paralelos e independentes — cada um instala com `npm ci` e cacheia
+# o npm via setup-node.
+#
+# Node 24: satisfaz `engines: >=22` do package.json raiz e é a versão que o
+# repo usa de fato (dev local em 24.x; LTS atual).
 name: CI
 
 on:
-  pull_request:
   push:
     branches: [main]
+  pull_request:
+
+# Em PRs, um push novo cancela a rodada anterior do mesmo ref; em `main`
+# nunca cancela (todo commit da principal fica com resultado registrado).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  ci:
-    name: lint, test e build (api + web)
+  lint:
+    name: Lint (api + web)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Instalar dependências
+        run: npm ci
+      - name: Lint (api + web)
+        run: npm run lint
+
+  unit-api:
+    name: Testes unitários (api)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Instalar dependências
+        run: npm ci
+      - name: Testes unitários da api (jest)
+        run: npm run test -w apps/api
+
+  test-web:
+    name: Testes web + typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Instalar dependências
+        run: npm ci
+      - name: Typecheck do web (tsc -b)
+        run: npx tsc -b
+        working-directory: apps/web
+      - name: Testes do web (vitest)
+        run: npm run test -w apps/web
+
+  build:
+    name: Build (api + web)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Instalar dependências
+        run: npm ci
+      - name: Build (api + web)
+        run: npm run build
+
+  integration-api:
+    name: Testes de integração (api + Postgres 16)
     runs-on: ubuntu-latest
 
     services:
       postgres:
+        # Mesma imagem do docker-compose.yml de dev. Banco efêmero, sem
+        # secrets. Não monta o docker/postgres/init.sql: a base de teste é
+        # criada via POSTGRES_DB e a extensão `unaccent` é criada pela
+        # própria migration 0000 (CREATE EXTENSION IF NOT EXISTS unaccent).
         image: postgres:16-alpine
         env:
           POSTGRES_USER: taketrip
@@ -26,35 +103,28 @@ jobs:
           --health-retries 10
 
     env:
+      # `db:migrate` (src/db/migrate.ts) lê DATABASE_URL; o app de teste
+      # (test/integration/support/test-app.ts) lê DATABASE_URL_TEST. No CI
+      # ambos apontam para a mesma base efêmera do service container, na
+      # porta padrão 5432 (a 55432 é só limitação da máquina local de dev —
+      # ver docker-compose.override.yml).
       DATABASE_URL: postgres://taketrip:taketrip@localhost:5432/taketrip_test
       DATABASE_URL_TEST: postgres://taketrip:taketrip@localhost:5432/taketrip_test
       # Módulo identity (ADR 004): obrigatório para assinar/validar o JWT —
-      # sem `.env` no CI (gitignored), precisa vir daqui. SES_*/APP_URL são
-      # opcionais (o EmailService real vira log sem eles — ver notifications).
+      # sem `.env` no CI (gitignored), precisa vir daqui. SES_*/S3_*/APP_URL
+      # são opcionais: sem eles, e-mail vira log e fotos vão para diretório
+      # local (ver .env.example).
       JWT_SECRET: ci-test-secret-nao-usar-em-producao
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
-
       - name: Instalar dependências
         run: npm ci
-
-      - name: Lint (api + web)
-        run: npm run lint
-
       - name: Aplicar migrations na base de teste
         run: npm run db:migrate -w apps/api
-
-      - name: Testes unitários (api + web)
-        run: npm run test
-
-      - name: Testes de integração (api, Postgres real)
-        run: npm run test:integration
-
-      - name: Build (api + web)
-        run: npm run build
+      - name: Testes de integração (jest + supertest + Postgres real)
+        run: npm run test:integration -w apps/api
