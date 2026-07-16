@@ -1,6 +1,8 @@
 # 005 — Proposta de provedor PIX
 
-**Data:** 2026-07-06 · **Autor:** backend-architect · **Status:** ⚠️ **PENDENTE DE APROVAÇÃO HUMANA** (gate da fase 2 — nada de billing é implementado antes do aval de Matheus)
+**Data:** 2026-07-06 · **Autor:** backend-architect · **Status:** ✅ **APROVADO por Matheus em 2026-07-16 — Efí como provedor primário**
+
+> **Decisão (2026-07-16):** Matheus aprovou a recomendação — **Efí**, atrás da interface `PixProvider`. Taxas marcadas como "verificar no contrato" serão confirmadas durante o onboarding real; se inverterem o custo, o runner-up (Mercado Pago) assume sem mudança de schema. O billing só inicia depois do CI no ar (condição da decisão 009).
 
 ## Contexto
 
