@@ -175,6 +175,10 @@ Objetivo: o passageiro reserva e paga sozinho pelo link; o MVP sai com suíte e2
 - [ ] Checklist por excursão: licença ANTT (fretamento eventual), seguro de passageiros, lista de passageiros impressa; CADASTUR lembrado no onboarding.
 - [ ] Informar, nunca bloquear: itens desmarcados não impedem nenhuma ação.
 
+**H3.7** Como passageiro, quero saber para quem vão meus dados ao reservar (LGPD mínimo documental — decisão 010, textos prontos nos anexos A/B do ADR). — **frontend apenas**
+- [ ] Página estática `/privacidade` com o conteúdo do Anexo B do ADR 010, pública, acessível sem login.
+- [ ] Aviso curto do Anexo A no formulário público de reserva, com `{nome da organização}` interpolado e link para `/privacidade` — sem checkbox de consentimento.
+
 **H3.6** Como cto, quero a suíte e2e e o relatório de release do MVP (qa).
 - [ ] E2e dos fluxos críticos: criar excursão → publicar → reserva (organizador e página pública) → cobrança PIX → webhook → embarque.
 - [ ] Casos de borda obrigatórios: poltrona dupla simultânea, webhook duplicado, expiração + PIX atrasado (com e sem vaga), cancelamento com pagos, isolamento entre 2 tenants.
