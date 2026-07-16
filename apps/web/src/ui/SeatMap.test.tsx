@@ -64,6 +64,39 @@ describe('SeatMap', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
+  it('estado ocupada (mapa público): bucket visual paid e não clicável mesmo com onSeatClick', () => {
+    const onSeatClick = vi.fn();
+    const poltronas: SeatMapPoltrona[] = [
+      { numero: 1, estado: 'livre' },
+      { numero: 2, estado: 'ocupada' },
+    ];
+    render(<SeatMap fileiras={[[1, 2]]} poltronas={poltronas} onSeatClick={onSeatClick} />);
+
+    const ocupada = screen.getByLabelText('Poltrona 2, ocupada');
+    expect(ocupada.tagName).toBe('DIV');
+    expect(ocupada).toHaveClass('tt-seatmap-poltrona--paid');
+
+    fireEvent.click(screen.getByLabelText('Poltrona 1, livre'));
+    expect(onSeatClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('legendaItens customizada substitui a legenda padrão (estados reduzidos do mapa público)', () => {
+    render(
+      <SeatMap
+        fileiras={FILEIRAS}
+        poltronas={POLTRONAS}
+        legendaItens={[
+          { bucket: 'empty', label: 'Livre' },
+          { bucket: 'paid', label: 'Ocupada' },
+          { bucket: 'blocked', label: 'Bloqueada' },
+        ]}
+      />,
+    );
+    expect(screen.getByText('Ocupada')).toBeInTheDocument();
+    expect(screen.queryByText('Pago')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pendente')).not.toBeInTheDocument();
+  });
+
   it('mostra a legenda por padrão e permite escondê-la', () => {
     const { rerender } = render(<SeatMap fileiras={FILEIRAS} poltronas={POLTRONAS} />);
     expect(screen.getByText('Pago')).toBeInTheDocument();

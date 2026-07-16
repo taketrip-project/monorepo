@@ -1,10 +1,19 @@
 import './SeatMap.css';
 
 /**
- * Estado "de negócio" de uma poltrona, igual ao contrato
- * (docs/api/bookings.yaml `Poltrona.estado`).
+ * Estado "de negócio" de uma poltrona, igual aos contratos
+ * (docs/api/bookings.yaml `Poltrona.estado` no app do organizador;
+ * docs/api/publico.yaml `MapaPoltronasPublico` traz o estado reduzido
+ * `ocupada` — o público nunca vê pendente/pago nem nomes).
  */
-export type SeatMapEstado = 'livre' | 'pendente' | 'sinal_pago' | 'pago' | 'embarcada' | 'bloqueada';
+export type SeatMapEstado = 'livre' | 'pendente' | 'sinal_pago' | 'pago' | 'embarcada' | 'bloqueada' | 'ocupada';
+
+export type SeatMapBucket = 'empty' | 'pending' | 'paid' | 'blocked';
+
+export interface SeatMapLegendaItem {
+  bucket: SeatMapBucket;
+  label: string;
+}
 
 export interface SeatMapPoltrona {
   numero: number;
@@ -20,10 +29,12 @@ export interface SeatMapProps {
   poltronas: SeatMapPoltrona[];
   /** Número da poltrona em seleção ativa (ex.: cadastro rápido em andamento) — vence o estado real na exibição. */
   selecionada?: number | null;
-  /** Ausente = grade só leitura. Presente = toque em qualquer poltrona não bloqueada dispara o callback. */
+  /** Ausente = grade só leitura. Presente = toque em qualquer poltrona não bloqueada/ocupada dispara o callback. */
   onSeatClick?: (poltrona: SeatMapPoltrona) => void;
   /** Legenda de estados abaixo da grade — visível por padrão (frontend-guidelines §8: "legenda sempre visível"). */
   legenda?: boolean;
+  /** Itens da legenda — o mapa público usa Livre · Ocupada · Bloqueada (estados reduzidos). */
+  legendaItens?: SeatMapLegendaItem[];
   className?: string;
 }
 
@@ -32,9 +43,11 @@ export interface SeatMapProps {
  * paid · pending · empty · selected · blocked. `sinal_pago` cai no mesmo
  * bucket visual de `pendente` (o design system não define um 6º estado) e
  * `embarcada` cai no bucket de `pago` — o detalhe de embarque mora na Lista
- * de embarque, não no mapa.
+ * de embarque, não no mapa. `ocupada` (mapa público, estados reduzidos)
+ * também usa o bucket `paid`: para o passageiro, ocupada = indisponível,
+ * mesma linguagem visual da poltrona tomada no app do organizador.
  */
-function bucketDoEstado(estado: SeatMapEstado): 'empty' | 'pending' | 'paid' | 'blocked' {
+function bucketDoEstado(estado: SeatMapEstado): SeatMapBucket {
   switch (estado) {
     case 'livre':
       return 'empty';
@@ -43,6 +56,7 @@ function bucketDoEstado(estado: SeatMapEstado): 'empty' | 'pending' | 'paid' | '
       return 'pending';
     case 'pago':
     case 'embarcada':
+    case 'ocupada':
       return 'paid';
     case 'bloqueada':
       return 'blocked';
@@ -56,16 +70,17 @@ const ESTADO_LABEL: Record<SeatMapEstado, string> = {
   pago: 'pago',
   embarcada: 'embarcada',
   bloqueada: 'bloqueada',
+  ocupada: 'ocupada',
 };
 
-const LEGENDA_ITENS: { bucket: 'paid' | 'pending' | 'empty' | 'blocked'; label: string }[] = [
+const LEGENDA_ITENS: SeatMapLegendaItem[] = [
   { bucket: 'paid', label: 'Pago' },
   { bucket: 'pending', label: 'Pendente' },
   { bucket: 'empty', label: 'Livre' },
   { bucket: 'blocked', label: 'Bloqueada' },
 ];
 
-function IconePorBucket({ bucket }: { bucket: 'empty' | 'pending' | 'paid' | 'blocked' | 'selected' }) {
+function IconePorBucket({ bucket }: { bucket: SeatMapBucket | 'selected' }) {
   if (bucket === 'paid') return <span aria-hidden="true">✓</span>;
   if (bucket === 'blocked') return <span aria-hidden="true">🔒</span>;
   return null;
@@ -77,6 +92,7 @@ export function SeatMap({
   selecionada = null,
   onSeatClick,
   legenda = true,
+  legendaItens = LEGENDA_ITENS,
   className,
 }: SeatMapProps) {
   const porNumero = new Map(poltronas.map((p) => [p.numero, p]));
@@ -98,7 +114,8 @@ export function SeatMap({
 
               const isSelecionada = selecionada === numero;
               const bucket = isSelecionada ? 'selected' : bucketDoEstado(poltrona.estado);
-              const clicavel = Boolean(onSeatClick) && poltrona.estado !== 'bloqueada';
+              const clicavel =
+                Boolean(onSeatClick) && poltrona.estado !== 'bloqueada' && poltrona.estado !== 'ocupada';
               const classes = ['tt-seatmap-poltrona', `tt-seatmap-poltrona--${bucket}`].filter(Boolean).join(' ');
 
               const rotulo = isSelecionada
@@ -141,7 +158,7 @@ export function SeatMap({
 
       {legenda && (
         <div className="tt-seatmap-legenda">
-          {LEGENDA_ITENS.map((item) => (
+          {legendaItens.map((item) => (
             <span key={item.bucket} className="tt-seatmap-legenda-item">
               <span className={`tt-seatmap-legenda-dot tt-seatmap-legenda-dot--${item.bucket}`} aria-hidden="true" />
               {item.label}

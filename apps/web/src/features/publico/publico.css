@@ -1,0 +1,368 @@
+/* Páginas públicas do passageiro (H3.1/H3.2) — mobile-first 375px.
+   Tokens em src/styles/tokens.css; nada de cor/tamanho fora deles. */
+
+.tt-publico-layout {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--tt-bg);
+  /* Espaço para a barra sticky de CTA não cobrir o fim do conteúdo — no
+     layout (e não no main) para o footer, que vem depois, também escapar. */
+  padding-bottom: 120px;
+}
+
+.tt-publico-main {
+  width: 100%;
+  max-width: 480px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--tt-space-16);
+  padding: var(--tt-space-16);
+}
+
+.tt-publico-footer {
+  width: 100%;
+  padding: var(--tt-space-12) var(--tt-space-16) var(--tt-space-24);
+  text-align: center;
+  font-size: 12px;
+  color: var(--tt-ink-soft);
+}
+
+.tt-publico-wordmark {
+  font-size: 12px;
+}
+
+/* ---- Página da excursão ---- */
+
+.tt-publico-fotos {
+  display: flex;
+  gap: var(--tt-space-8);
+  overflow-x: auto;
+  margin: 0 calc(-1 * var(--tt-space-16));
+  padding: 0 var(--tt-space-16);
+}
+
+.tt-publico-foto {
+  flex-shrink: 0;
+  width: 280px;
+  height: 180px;
+  object-fit: cover;
+  border-radius: var(--tt-r-lg);
+  border: 1px solid var(--tt-border);
+}
+
+.tt-publico-fotos:has(.tt-publico-foto:only-child) .tt-publico-foto {
+  width: 100%;
+}
+
+.tt-publico-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tt-space-4);
+}
+
+.tt-publico-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tt-space-8);
+}
+
+.tt-publico-destino {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--tt-ink);
+}
+
+.tt-publico-sub {
+  margin: 0;
+  font-size: 14px;
+  color: var(--tt-ink-mute);
+}
+
+.tt-publico-card {
+  background: var(--tt-surface);
+  border: 1px solid var(--tt-border);
+  border-radius: var(--tt-r-lg);
+  padding: var(--tt-space-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--tt-space-12);
+}
+
+.tt-publico-card-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--tt-ink);
+}
+
+.tt-publico-linha {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--tt-space-12);
+  font-size: 14px;
+}
+
+.tt-publico-linha-label {
+  color: var(--tt-ink-mute);
+}
+
+.tt-publico-linha-valor {
+  font-family: var(--tt-mono);
+  color: var(--tt-ink);
+  text-align: right;
+}
+
+.tt-publico-descricao {
+  margin: 0;
+  font-size: 14px;
+  color: var(--tt-ink);
+  white-space: pre-wrap;
+}
+
+.tt-publico-pontos {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.tt-publico-ponto {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--tt-space-12);
+  padding: var(--tt-space-8) 0;
+  font-size: 14px;
+}
+
+.tt-publico-ponto + .tt-publico-ponto {
+  border-top: 1px solid var(--tt-border-soft);
+}
+
+.tt-publico-ponto-local {
+  color: var(--tt-ink);
+}
+
+.tt-publico-ponto-horario {
+  font-family: var(--tt-mono);
+  color: var(--tt-ink-mute);
+  flex-shrink: 0;
+}
+
+/* Barra sticky do CTA — ação primária sempre visível sem scroll. */
+.tt-publico-cta {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--tt-space-16);
+  padding: var(--tt-space-12) var(--tt-space-16);
+  padding-bottom: calc(var(--tt-space-12) + env(safe-area-inset-bottom, 0px));
+  background: var(--tt-surface);
+  border-top: 1px solid var(--tt-border);
+}
+
+.tt-publico-cta-inner {
+  width: 100%;
+  max-width: 448px;
+  display: flex;
+  align-items: center;
+  gap: var(--tt-space-16);
+}
+
+.tt-publico-cta-preco {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.tt-publico-cta-preco-valor {
+  font-family: var(--tt-mono);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--tt-ink);
+}
+
+.tt-publico-cta-preco-sub {
+  font-size: 12px;
+  color: var(--tt-ink-mute);
+}
+
+.tt-publico-cta .tt-button {
+  flex: 1;
+}
+
+/* Formulário de reserva (dentro do Sheet). */
+.tt-publico-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tt-space-16);
+}
+
+/* Escolha sinal | integral no formulário de reserva. */
+.tt-publico-pagamento {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tt-space-8);
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.tt-publico-pagamento-legend {
+  padding: 0;
+  margin-bottom: var(--tt-space-4);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tt-ink);
+}
+
+.tt-publico-pagamento-opcao {
+  display: flex;
+  align-items: center;
+  gap: var(--tt-space-12);
+  min-height: var(--tt-tap-min);
+  padding: var(--tt-space-12) var(--tt-space-16);
+  background: var(--tt-surface);
+  border: 1px solid var(--tt-border);
+  border-radius: var(--tt-r-md);
+  cursor: pointer;
+  transition: border-color var(--tt-motion-fast) var(--tt-ease);
+}
+
+.tt-publico-pagamento-opcao:has(input:checked) {
+  border-color: var(--tt-primary);
+  background: var(--tt-primary-soft);
+}
+
+.tt-publico-pagamento-opcao input {
+  accent-color: var(--tt-primary);
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.tt-publico-pagamento-texto {
+  display: flex;
+  flex-direction: column;
+}
+
+.tt-publico-pagamento-nome {
+  font-size: 14px;
+  color: var(--tt-ink);
+}
+
+.tt-publico-pagamento-valor {
+  font-family: var(--tt-mono);
+  font-size: 13px;
+  color: var(--tt-ink-mute);
+}
+
+/* Alerta de tela (erro/aviso/sucesso) — sempre cor + ícone + texto. */
+.tt-publico-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--tt-space-8);
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--tt-r-md);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.tt-publico-alert--danger {
+  background: var(--tt-danger-soft);
+  color: var(--tt-danger);
+}
+
+.tt-publico-alert--warning {
+  background: var(--tt-warning-soft);
+  color: var(--tt-warning);
+}
+
+.tt-publico-alert--success {
+  background: var(--tt-success-soft);
+  color: var(--tt-success);
+}
+
+.tt-publico-mute {
+  margin: 0;
+  font-size: 13px;
+  color: var(--tt-ink-mute);
+}
+
+/* Estado vazio/indisponível/erro de rede em tela cheia. */
+.tt-publico-vazio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--tt-space-12);
+  padding: var(--tt-space-48) var(--tt-space-16);
+  text-align: center;
+}
+
+.tt-publico-vazio-icone {
+  font-size: 40px;
+}
+
+.tt-publico-vazio-titulo {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--tt-ink);
+}
+
+/* ---- Página da situação da reserva ---- */
+
+.tt-publico-reserva-poltrona {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--tt-space-4);
+  padding: var(--tt-space-16) 0;
+}
+
+.tt-publico-reserva-poltrona-numero {
+  font-family: var(--tt-mono);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--tt-ink);
+}
+
+.tt-publico-reserva-poltrona-label {
+  font-size: 13px;
+  color: var(--tt-ink-mute);
+}
+
+.tt-publico-qr {
+  display: block;
+  width: 200px;
+  height: 200px;
+  margin: 0 auto;
+  border: 1px solid var(--tt-border);
+  border-radius: var(--tt-r-md);
+  background: var(--tt-surface);
+}
+
+.tt-publico-copia-cola {
+  font-family: var(--tt-mono);
+  font-size: 12px;
+  color: var(--tt-ink-mute);
+  background: var(--tt-surface-2);
+  border: 1px solid var(--tt-border-soft);
+  border-radius: var(--tt-r-sm);
+  padding: var(--tt-space-8) var(--tt-space-12);
+  word-break: break-all;
+  margin: 0;
+}

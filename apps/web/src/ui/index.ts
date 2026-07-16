@@ -31,4 +31,4 @@ export { ToastProvider } from './Toast';
 export { useToast } from './useToast';
 
 export { SeatMap } from './SeatMap';
-export type { SeatMapProps, SeatMapEstado, SeatMapPoltrona } from './SeatMap';
+export type { SeatMapProps, SeatMapEstado, SeatMapPoltrona, SeatMapBucket, SeatMapLegendaItem } from './SeatMap';

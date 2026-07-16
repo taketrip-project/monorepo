@@ -33,3 +33,6 @@ assets/
 
 # runtime lock state from the Claude Code harness, not project content
 .claude/scheduled_tasks.lock
+
+# infra local: override do compose (Postgres na 55432 — a 5432 é de outro projeto)
+docker-compose.override.yml

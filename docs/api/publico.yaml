@@ -117,7 +117,17 @@ paths:
                 whatsapp: { type: string, description: 'Aceita DDD+número; normalizado para E.164 no servidor (mesma regra do cadastro rápido, whatsapp.util.ts).' }
                 cpf: { type: [string, 'null'] }
                 tipo_pagamento: { type: string, enum: [sinal, integral] }
-                ponto_embarque_id: { type: [string, 'null'], format: uuid }
+                ponto_embarque_id:
+                  type: [string, 'null']
+                  format: uuid
+                  description: >
+                    Aceito e validado (precisa pertencer à excursão), mas
+                    INALCANÇÁVEL pela UI pública nesta fase: o GET público
+                    não expõe os ids dos pontos de embarque (adendo do ADR
+                    008, 16/07/2026). O frontend público envia sempre null;
+                    o organizador registra o ponto ao confirmar a reserva
+                    (PATCH autenticado). Expor os ids e adicionar a escolha
+                    no formulário é melhoria planejada da próxima iteração.
       responses:
         '201':
           content:
@@ -270,6 +280,11 @@ components:
         organizacao_nome: { type: string }
         pontos_embarque:
           type: array
+          description: >
+            Informativo (local/horário/ordem). Intencionalmente SEM `id`
+            nesta fase — adendo do ADR 008 (16/07/2026): sem id exposto, o
+            passageiro não escolhe ponto na reserva pública; o organizador
+            registra na confirmação.
           items:
             type: object
             required: [local, horario, ordem]

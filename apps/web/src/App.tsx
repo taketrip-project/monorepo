@@ -17,11 +17,14 @@ import { ExcursoesListPage } from './features/excursoes/ExcursoesListPage';
 import { NovaExcursaoPage } from './features/excursoes/NovaExcursaoPage';
 import { ExcursaoDetalhePage } from './features/excursoes/ExcursaoDetalhePage';
 import { ReservaDetalhePage } from './features/excursoes/ReservaDetalhePage';
+import { ExcursaoPublicaPage } from './features/publico/ExcursaoPublicaPage';
+import { ReservaPublicaRoute } from './features/publico/ReservaPublicaPage';
 
 /**
- * App shell: roteamento público (auth) + roteamento protegido (AppShell com
- * BottomNav). Ver docs/api/identity.yaml para o contrato consumido por cada
- * tela pública.
+ * App shell: roteamento público (auth + página da excursão/reserva do
+ * passageiro, H3.1/H3.2) + roteamento protegido (AppShell com BottomNav).
+ * Ver docs/api/identity.yaml e docs/api/publico.yaml para os contratos
+ * consumidos pelas telas públicas.
  */
 function App() {
   return (
@@ -33,6 +36,12 @@ function App() {
           <Route path="/esqueci-senha" element={<EsqueciSenhaPage />} />
           <Route path="/redefinir-senha" element={<RedefinirSenhaPage />} />
           <Route path="/convite/aceitar" element={<AceitarConvitePage />} />
+
+          {/* Páginas do passageiro — sem login, sem AppShell (H3.1/H3.2).
+              /e/{codigo} é o mesmo padrão da `url_publica` compartilhada
+              pelo organizador; /r/{reservaId} é o link de acompanhamento. */}
+          <Route path="/e/:codigo" element={<ExcursaoPublicaPage />} />
+          <Route path="/r/:reservaId" element={<ReservaPublicaRoute />} />
 
           <Route element={<ProtectedRoute />}>
             <Route element={<AppShell />}>
