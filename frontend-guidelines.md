@@ -37,9 +37,9 @@
   --tt-ink-soft:   #a8a29e;    /* labels, legendas, ícones */
   --tt-ink-faint:  #d6d3d1;    /* chevrons, hairlines */
 
-  /* Marca — teal em teste (ver §1b) */
-  --tt-primary:        #0a9396;  /* teal — ação primária */
-  --tt-primary-press:  #067274;  /* estado pressed/active */
+  /* Marca — teal definitiva (ver §1b) */
+  --tt-primary:        #098183;  /* teal — ação primária */
+  --tt-primary-press:  #056263;  /* estado pressed/active */
   --tt-primary-soft:   #e5f5f5;  /* fundo de chips, badges primary */
   --tt-accent:         #fbcdb6;  /* destaque sutil — coral quente */
   --tt-accent-ink:     #7d2d12;  /* texto sobre accent */
@@ -58,20 +58,20 @@
 
 - **Fundo do app:** `--tt-bg`, nunca `#fff` puro. O calor da base é parte da identidade.
 - **Texto sobre fundos coloridos:** use o `*-soft` correspondente como fundo e a cor "forte" como texto (ex.: `bg: success-soft`, `text: success`).
-- **Evite azuis frios.** Não introduza azul nem para informativo — use `--tt-ink-mute`. Exceção deliberada: `--tt-primary` (teal, ver §1b) fica no limite ciano/verde-azulado por pedido explícito de teste — os tokens de apoio (texto, superfície) continuam neutros e quentes para o produto não esfriar como um todo.
+- **Evite azuis frios.** Não introduza azul nem para informativo — use `--tt-ink-mute`. Exceção deliberada: `--tt-primary` (teal, ver §1b) fica no limite ciano/verde-azulado por decisão do Matheus (definitiva desde 16/07/2026) — os tokens de apoio (texto, superfície) continuam neutros e quentes para o produto não esfriar como um todo.
 - **Cores de status são funcionais, não decorativas.** Não use `success` apenas porque "fica bonito".
 - Nunca invente nova cor sem adicioná-la à tabela acima.
 
-### 1b · Paleta teal — fundamentação (teste, 07/07/2026)
+### 1b · Paleta teal — fundamentação (DEFINITIVA, 16/07/2026)
 
-A paleta laranja original não combinou tematicamente com "excursão/turismo" na avaliação do Matheus. Esta seção documenta a paleta alternativa gerada a partir de `#0A9396` como `--tt-primary`, produzida seguindo teoria das cores (não é escolha arbitrária) — **status: em teste**, ainda não é definitiva até validação visual.
+A paleta laranja original não combinou tematicamente com "excursão/turismo" na avaliação do Matheus. Esta seção documenta a paleta gerada a partir da semente `#0A9396`, produzida seguindo teoria das cores (não é escolha arbitrária) — **status: definitiva** desde 16/07/2026, quando o Matheus resolveu a pendência de contraste escolhendo a **opção 2** abaixo (histórico no fim da seção): escurecer levemente o `--tt-primary` só o suficiente para cruzar 4.5:1 nos dois casos reprovados. O valor final é **`#098183`** — HSL(181°, 87%, 27.5%), a **menor** redução de lightness a partir da semente (31%→27.5%, −3.5 pontos) que passa WCAG AA calculado nos dois casos; hue e saturação intactos, o tom pedido não descaracterizou.
 
-**Harmonia:** `#0A9396` é HSL(181°, 87%, 31%) — um teal saturado e escuro, na fronteira entre ciano e verde-azulado. Evoca água/litoral/estrada, temática natural para viagem — mais alinhado ao produto do que o laranja corporativo-quente anterior. Para `--tt-accent`, em vez de outro tom quente aleatório, usei o **quase-complementar** do teal (a roda de cores coloca o complemento de 181° perto de 1°, um vermelho-coral) — isso mantém o "calor humano" do produto (princípio 03) mesmo com uma marca mais fria, e cria contraste vivo sem recorrer a azul ou a decisões desconectadas de teoria de cor.
+**Harmonia:** a semente `#0A9396` é HSL(181°, 87%, 31%) — um teal saturado e escuro, na fronteira entre ciano e verde-azulado. Evoca água/litoral/estrada, temática natural para viagem — mais alinhado ao produto do que o laranja corporativo-quente anterior. Para `--tt-accent`, em vez de outro tom quente aleatório, usei o **quase-complementar** do teal (a roda de cores coloca o complemento de 181° perto de 1°, um vermelho-coral) — isso mantém o "calor humano" do produto (princípio 03) mesmo com uma marca mais fria, e cria contraste vivo sem recorrer a azul ou a decisões desconectadas de teoria de cor. O escurecimento para `#098183` acontece só no eixo de lightness, então toda a harmonia se preserva.
 
 **Escala derivada do primary** (mesma lógica de antes — só a base mudou):
-- `--tt-primary-press` = teal mais escuro/saturado (L 31%→24%, S 87%→90%) para estado pressed.
-- `--tt-primary-soft` = tint quase-branco do mesmo hue (L→93%, S→45%) para fundo de chip/badge.
-- `--tt-accent` = tint claro do coral complementar (H 20°, S 90%, L 85%); `--tt-accent-ink` = a versão escura e saturada do mesmo hue (H 15°, S 75%, L 28%) para texto legível sobre ele.
+- `--tt-primary-press` = `#056263` — teal mais escuro/saturado (L 27.5%→20.5%, S 87%→90%) para estado pressed. Reescalado junto com o primary para manter o mesmo degrau perceptual de antes (razão de luminância primary:press ≈ 1.53:1 — com o press antigo `#067274` o degrau cairia para 1.22:1 e o hover ficaria sutil demais).
+- `--tt-primary-soft` = tint quase-branco do mesmo hue (L→93%, S→45%) para fundo de chip/badge — inalterado (`#e5f5f5`).
+- `--tt-accent` = tint claro do coral complementar (H 20°, S 90%, L 85%); `--tt-accent-ink` = a versão escura e saturada do mesmo hue (H 15°, S 75%, L 28%) para texto legível sobre ele — inalterados: a relação quase-complementar depende do hue, que não mudou.
 
 **Superfícies e texto (`--tt-bg`, `--tt-ink*`) não mudaram** — propositalmente. Área grande de tela não deve carregar o hue da marca; só marca/destaque devem. Isso também limita o risco de o produto esfriar visualmente como um todo.
 
@@ -79,17 +79,18 @@ A paleta laranja original não combinou tematicamente com "excursão/turismo" na
 
 | Combinação real usada no produto | Contraste | Critério | Resultado |
 |---|---|---|---|
-| `--tt-ink` (#1c1917) sobre `--tt-bg` (#fffaf5) | ~15.8:1 | 4.5:1 (texto normal) | ✅ inalterado |
-| `--tt-primary-press` (#067274) sobre `--tt-primary-soft` (#e5f5f5) | 5.11:1 | 4.5:1 | ✅ passa |
+| `--tt-ink` (#1c1917) sobre `--tt-bg` (#fffaf5) | 16.86:1 | 4.5:1 (texto normal) | ✅ inalterado |
+| `#fff` sobre `--tt-primary` (#098183) — **botão primário, FAB, poltrona selecionada** | 4.69:1 | 4.5:1 (texto normal) | ✅ passa |
+| `--tt-primary` (#098183) sobre `--tt-bg` (#fffaf5) — **link de texto (ex.: "Esqueci a senha")** | 4.52:1 | 4.5:1 (texto normal) | ✅ passa |
+| `--tt-primary` (#098183) sobre `--tt-surface` (#ffffff) | 4.69:1 | 4.5:1 | ✅ passa |
+| `--tt-primary-press` (#056263) sobre `--tt-primary-soft` (#e5f5f5) | 6.38:1 | 4.5:1 | ✅ passa |
+| `#fff` sobre `--tt-primary-press` (#056263) — **botão em hover/pressed** | 7.16:1 | 4.5:1 | ✅ passa |
+| `--tt-primary-press` (#056263) sobre `--tt-bg` (#fffaf5) | 6.90:1 | 4.5:1 | ✅ passa |
 | `--tt-accent-ink` (#7d2d12) sobre `--tt-accent` (#fbcdb6) | 6.43:1 | 4.5:1 | ✅ passa |
-| `--tt-ink` (#1c1917) sobre `--tt-primary` (#0a9396) | 4.69:1 | 4.5:1 | ✅ passa (margem pequena) |
-| `#fff` sobre `--tt-primary` (#0a9396) — **botão primário atual** | 3.73:1 | 4.5:1 (texto normal) | ⚠️ não passa |
-| `--tt-primary` (#0a9396) sobre `--tt-bg` (#fffaf5) — **link de texto (ex.: "Esqueci a senha")** | 3.60:1 | 4.5:1 (texto normal) | ⚠️ não passa |
 
-**Achado que precisa de decisão antes de promover a paleta a definitiva:** o `--tt-primary` deste teal tem luminância relativa (~31% de lightness) que não sobra margem suficiente pra 4.5:1 nem como texto branco em cima dele (botão), nem como texto colorido em cima do fundo claro (link). **Isto NÃO é uma regressão** — o laranja anterior (`#ea580c`) calculava 3.56:1 (branco no botão) e 3.43:1 (texto no fundo), no mesmo patamar — já era dívida de acessibilidade pré-existente em ambos os casos, só não tinha sido medida antes. Confirmado visualmente (screenshot da tela de login): o teal é legível na prática, mas fica no limite. Três saídas possíveis, nenhuma aplicada ainda (decisão do Matheus/cto antes de sair do teste):
-1. Manter como está (aceitar a dívida, documentada, igual já era antes).
-2. Escurecer levemente `--tt-primary` (reduzir lightness uns 4–6 pontos) só o suficiente pra cruzar 4.5:1 nos dois casos, sem descaracterizar o tom pedido.
-3. Trocar botão primário para peso 700 (passa a valer "texto grande" a 3:1) e trocar links de `--tt-primary` para `--tt-primary-press` (mais escuro, sobra folga: 5.53:1 no fundo).
+Nota: `--tt-ink` sobre `--tt-primary` calcularia 3.73:1, mas **não é uma combinação usada no produto** (verificado: todo fundo primary real — Button, FAB, SeatMap selecionada — usa texto `#fff`; os demais usos são fill de barra de progresso, sem texto). Nesse hue não existe lightness que passe 4.5:1 simultaneamente com branco E com `--tt-ink` por cima — texto sobre primary é, por regra, branco.
+
+**Histórico da decisão (16/07/2026):** na promoção da paleta, dois casos reprovavam com a semente `#0A9396` (L 31%): branco sobre o botão primário (3.73:1) e link primary sobre `--tt-bg` (3.60:1) — dívida pré-existente, o laranja anterior (`#ea580c`) calculava 3.56:1 e 3.43:1 nos mesmos casos. Das três saídas propostas — (1) aceitar a dívida documentada, (2) escurecer levemente o primary até cruzar 4.5:1, (3) botão em peso 700 ("texto grande", 3:1) + links em `--tt-primary-press` — **o Matheus escolheu a opção 2 em 16/07/2026**. Aplicada com a menor redução que passa calculado: L 31%→27.5% (`#0A9396`→`#098183`); em 28% o link ainda ficava em 4.40:1. Com isso a paleta saiu de "em teste" e virou **definitiva**.
 
 ---
 
@@ -520,7 +521,7 @@ Linha horizontal scrollável quando passa de 4 chips.
 
 ## 11 · Acessibilidade
 
-- **Contraste mínimo 4.5:1** para texto corrido. Pares testados em §1b — uma exceção conhecida e documentada (texto branco no botão primário sobre o teal, 3.73:1) segue em aberto, não é regressão da paleta anterior.
+- **Contraste mínimo 4.5:1** para texto corrido. Pares testados em §1b — desde 16/07/2026 (primary escurecido para `#098183`, opção 2 do §1b) **todas** as combinações reais do produto passam; não há mais exceção em aberto.
 - Alvos de toque **≥48px** (visto na seção de espaçamento).
 - Foco visível em todos os elementos interativos: outline de 2px sólido `--tt-primary`, offset 2px.
 - Ícones decorativos: `aria-hidden="true"`. Ícones que carregam significado (status): `aria-label` claro.

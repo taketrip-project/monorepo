@@ -36,7 +36,7 @@ Regras de sempre: todo PR passa pelo `code-reviewer`; decisões novas de escopo 
 - ✅ Minimalismo tipográfico (nunca bold em valor de `<Input>`) — regra permanente em `frontend-guidelines.md`, skill `design-system-taketrip`, agentes `frontend-engineer`/`code-reviewer`
 - ✅ Scrollbar oculta globalmente (scroll continua funcional)
 - ✅ Wordmark de texto "taketrip" no `AppShell` e telas de auth — **ainda não existe símbolo/logo**, só texto
-- ✅ Paleta teal a partir de `#0A9396` aplicada em `tokens.css` — novo agente `.claude/agents/color-theorist.md` para toda decisão de cor futura. Decisão em aberto (não bloqueante): contraste WCAG do botão primário e do link de auth — 3 opções em `frontend-guidelines.md` §1b
+- ✅ Paleta teal a partir de `#0A9396` aplicada em `tokens.css` — novo agente `.claude/agents/color-theorist.md` para toda decisão de cor futura. ~~Decisão em aberto: contraste WCAG~~ → resolvida 16/07/2026 (opção 2 do §1b): primary escurecido para `#098183`, paleta promovida a definitiva
 - ⬜ **Redesign de layout ainda não iniciado** (ver "Como retomar", item 2)
 
 **Portal do passageiro** (pedido de Matheus, 07/07/2026): ADR 007 (`docs/decisions/007-conta-passageiro-busca-aprovacao.md`) — versão simplificada aprovada por Matheus (sem conta de passageiro, sem busca; reaproveita a página pública H3.1/H3.2). ADR 008 (`docs/decisions/008-pagina-publica-contrato.md`) — contrato técnico pronto (`docs/api/publico.yaml`), zero migration nova, decisão de segurança documentada (tenant resolvido via `codigo_publico`, não JWT). **Implementação não iniciada.**
