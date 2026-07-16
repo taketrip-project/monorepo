@@ -17,6 +17,7 @@ import {
   type ContadoresExcursao,
   mapExcursao,
   mapExcursaoCard,
+  mapExcursaoPublica,
   mapFotoFactory,
   mapPontoEmbarque,
 } from './excursions.mapper';
@@ -346,16 +347,107 @@ export class ExcursionsService {
     return mapExcursaoCard(linha.excursao, calc, chaveCapa ? this.storage.urlPublica(chaveCapa) : null);
   }
 
+  // -- Página pública (H3.1, ADR 008) -----------------------------------------
+
+  /**
+   * `GET /publico/excursoes/{codigo}` (`docs/api/publico.yaml`): tudo que o
+   * passageiro precisa — e NADA de outros passageiros. `vagas`/`capacidade`
+   * SEMPRE calculados, como em toda listagem do organizador.
+   */
+  async obterPaginaPublica(codigo: string) {
+    const { row, veiculoRow } = await this.buscarExcursaoPublicaPorCodigo(codigo);
+    const capacidade = this.calcularCapacidade(veiculoRow);
+    const ativas = await this.contadorReservas.contarReservasAtivasPorOrganizacao(
+      row.organizacaoId,
+      row.id,
+    );
+    const vagas = Math.max(capacidade - ativas, 0);
+
+    const [[org], fotos, pontos] = await Promise.all([
+      this.db
+        .select({ nome: organizacao.nome })
+        .from(organizacao)
+        .where(eq(organizacao.id, row.organizacaoId))
+        .limit(1),
+      this.db
+        .select()
+        .from(fotoExcursao)
+        .where(
+          and(eq(fotoExcursao.organizacaoId, row.organizacaoId), eq(fotoExcursao.excursaoId, row.id)),
+        )
+        .orderBy(fotoExcursao.ordem),
+      this.db
+        .select()
+        .from(pontoEmbarque)
+        .where(
+          and(eq(pontoEmbarque.organizacaoId, row.organizacaoId), eq(pontoEmbarque.excursaoId, row.id)),
+        )
+        .orderBy(pontoEmbarque.ordem),
+    ]);
+
+    return mapExcursaoPublica(row, { vagas, capacidade }, org.nome, {
+      fotos: fotos.map((f) => this.storage.urlPublica(f.s3Key)),
+      pontosEmbarque: pontos.map(mapPontoEmbarque),
+    });
+  }
+
+  /**
+   * Resolução de tenant SEM JWT (ADR 008): a chave de capacidade é o próprio
+   * `codigo_publico` (UNIQUE, não sequencial) — `organizacao_id` sai da linha
+   * resolvida, NUNCA de payload nem de contexto ambiente. 404
+   * `excursao_indisponivel` IDÊNTICO para "não existe" e "existe mas não está
+   * publicada/lotada", para não dar sinal de enumeração de códigos alheios.
+   */
+  async buscarExcursaoPublicaPorCodigo(
+    codigo: string,
+  ): Promise<{ row: ExcursaoRow; veiculoRow: VeiculoRow }> {
+    // O alfabeto do código é todo maiúsculo (ver codigo-publico.util.ts), mas
+    // quem digita o link à mão costuma digitar minúsculas — normaliza aqui,
+    // no único ponto de resolução, em vez de 404 para um código "certo".
+    const codigoNormalizado = codigo.toUpperCase();
+    const [linha] = await this.db
+      .select({ excursao, veiculo })
+      .from(excursao)
+      .innerJoin(veiculo, eq(veiculo.id, excursao.veiculoId))
+      .where(
+        and(
+          eq(excursao.codigoPublico, codigoNormalizado),
+          inArray(excursao.status, ['publicada', 'lotada']),
+        ),
+      )
+      .limit(1);
+    if (!linha) {
+      throw new DomainException(
+        HttpStatus.NOT_FOUND,
+        'excursao_indisponivel',
+        'Essa excursão não está disponível.',
+      );
+    }
+    return { row: linha.excursao, veiculoRow: linha.veiculo };
+  }
+
   // -- Helpers compartilhados com pontos-embarque/fotos ----------------------
 
   /** Usado por `PontosEmbarqueService`/`FotosService` só para o 404 (excursão de outro tenant). */
   async buscarExcursaoOuFalhar(excursaoId: string): Promise<{ row: ExcursaoRow; veiculoRow: VeiculoRow }> {
     const ctx = TenantContextStorage.get();
+    return this.buscarExcursaoPorOrganizacao(ctx.organizacaoId, excursaoId);
+  }
+
+  /**
+   * Núcleo de `buscarExcursaoOuFalhar` com o tenant POR PARÂMETRO (ADR 008):
+   * o fluxo público resolve `organizacaoId` via `codigo_publico`/`reservaId`
+   * e reaproveita a MESMA query — nunca uma segunda implementação.
+   */
+  async buscarExcursaoPorOrganizacao(
+    organizacaoId: string,
+    excursaoId: string,
+  ): Promise<{ row: ExcursaoRow; veiculoRow: VeiculoRow }> {
     const [linha] = await this.db
       .select({ excursao, veiculo })
       .from(excursao)
       .innerJoin(veiculo, eq(veiculo.id, excursao.veiculoId))
-      .where(and(eq(excursao.id, excursaoId), eq(excursao.organizacaoId, ctx.organizacaoId)))
+      .where(and(eq(excursao.id, excursaoId), eq(excursao.organizacaoId, organizacaoId)))
       .limit(1);
     if (!linha) throw new NaoEncontradoException();
     return { row: linha.excursao, veiculoRow: linha.veiculo };

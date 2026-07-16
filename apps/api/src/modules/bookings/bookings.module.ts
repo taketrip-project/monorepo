@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
+import { RateLimitPublicoModule } from '../../common/rate-limit-publico';
 import { ExcursionsModule } from '../excursions/excursions.module';
 import { ExcursaoReservasController } from './excursao-reservas.controller';
 import { ReservasController } from './reservas.controller';
+import { ReservaPublicaController } from './reserva-publica.controller';
 import { PassageirosController } from './passageiros.controller';
 import { ReservasService } from './reservas.service';
 import { PassageirosService } from './passageiros.service';
@@ -19,8 +21,15 @@ import { ListaImpressaoService } from './lista-impressao.service';
  * provider deste módulo, para não fechar um ciclo de DI.
  */
 @Module({
-  imports: [ExcursionsModule],
-  controllers: [ExcursaoReservasController, ReservasController, PassageirosController],
+  // `RateLimitPublicoModule` (ADR 008): provê o storage/opções do throttler
+  // para o `PublicoThrottlerGuard` aplicado SÓ no controller público.
+  imports: [ExcursionsModule, RateLimitPublicoModule],
+  controllers: [
+    ExcursaoReservasController,
+    ReservaPublicaController,
+    ReservasController,
+    PassageirosController,
+  ],
   providers: [ReservasService, PassageirosService, ListaImpressaoService],
   exports: [ReservasService],
 })

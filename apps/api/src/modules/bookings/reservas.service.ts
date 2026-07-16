@@ -8,11 +8,24 @@ import { organizacao } from '../identity/schema';
 import { veiculo } from '../fleet/schema';
 import { excursao, pontoEmbarque } from '../excursions/schema';
 import { ExcursionsService } from '../excursions/excursions.service';
-import { passageiro, pendenciaEstorno, reserva, type statusPagamentoEnum } from './schema';
+import { resolverSinalCentavos } from '../excursions/sinal.util';
+import {
+  passageiro,
+  pendenciaEstorno,
+  reserva,
+  type formaPagamentoEnum,
+  type origemReservaEnum,
+  type statusPagamentoEnum,
+} from './schema';
 import { PassageirosService } from './passageiros.service';
 import { ListaImpressaoService, type DadosListaImpressao } from './lista-impressao.service';
-import { mapReserva } from './bookings.mapper';
-import { montarPoltronaMapa, poltronasLivres, type OcupacaoPoltrona } from './poltronas.util';
+import { mapReserva, mapReservaPublicaCriada, mapSituacaoReservaPublica } from './bookings.mapper';
+import {
+  montarPoltronaMapa,
+  montarPoltronaMapaPublico,
+  poltronasLivres,
+  type OcupacaoPoltrona,
+} from './poltronas.util';
 import {
   validarExcursaoAceitaReserva,
   validarPoltronaDoVeiculo,
@@ -20,13 +33,32 @@ import {
 } from './reserva-validacao.util';
 import { transicaoPagamentoAvanca } from './reserva-pagamento.util';
 import { condicaoNomeTolerante, buscaEhNumerica } from './busca-passageiro.util';
+import { montarInstrucoesReservaPublica } from './instrucoes-reserva-publica.util';
 import type { CriarReservaDto } from './dto/criar-reserva.dto';
+import type { CriarReservaPublicaDto } from './dto/criar-reserva-publica.dto';
 import type { AtualizarReservaDto } from './dto/atualizar-reserva.dto';
 import type { ListarReservasQueryDto } from './dto/listar-reservas-query.dto';
 
 type ReservaRow = typeof reserva.$inferSelect;
 type PassageiroRow = typeof passageiro.$inferSelect;
+type ExcursaoRow = typeof excursao.$inferSelect;
+type VeiculoRow = typeof veiculo.$inferSelect;
 type StatusPagamentoAcao = Exclude<(typeof statusPagamentoEnum.enumValues)[number], 'pendente'>;
+type OrigemReserva = (typeof origemReservaEnum.enumValues)[number];
+type FormaPagamento = (typeof formaPagamentoEnum.enumValues)[number];
+
+/** Entrada do núcleo transacional de criação de reserva (ADR 008): tenant SEMPRE por parâmetro. */
+interface EntradaReservaNucleo {
+  organizacaoId: string;
+  excursaoRow: ExcursaoRow;
+  veiculoRow: VeiculoRow;
+  poltrona: number;
+  passageiro: { nome: string; whatsapp: string; cpf: string | null | undefined };
+  pontoEmbarqueId: string | null;
+  formaPagamento: FormaPagamento | null;
+  valorCentavos: number;
+  origem: OrigemReserva;
+}
 
 /**
  * Regras de negócio de `bookings` (H1.8–H1.13, `docs/api/bookings.yaml`):
@@ -50,7 +82,36 @@ export class ReservasService {
   async mapaPoltronas(excursaoId: string) {
     const ctx = TenantContextStorage.get();
     const { veiculoRow } = await this.excursionsService.buscarExcursaoOuFalhar(excursaoId);
+    return this.mapaPoltronasPorOrganizacao(ctx.organizacaoId, excursaoId, veiculoRow);
+  }
 
+  /**
+   * Mapa de poltronas público (H3.2, `docs/api/publico.yaml`): MESMA
+   * implementação de ocupação do organizador (uma só, nunca duplicada — ADR
+   * 008), reduzida para os estados livre · ocupada · bloqueada. O público
+   * NUNCA vê pendente/pago nem nome de passageiro.
+   */
+  async mapaPoltronasPublico(codigo: string) {
+    const { row, veiculoRow } = await this.excursionsService.buscarExcursaoPublicaPorCodigo(codigo);
+    const mapa = await this.mapaPoltronasPorOrganizacao(row.organizacaoId, row.id, veiculoRow);
+    return {
+      layout: mapa.layout,
+      poltronas: mapa.poltronas.map((p) =>
+        montarPoltronaMapaPublico(
+          p.numero,
+          p.estado === 'bloqueada',
+          p.estado !== 'livre' && p.estado !== 'bloqueada',
+        ),
+      ),
+    };
+  }
+
+  /** Núcleo de `mapaPoltronas` com o tenant POR PARÂMETRO (ADR 008). */
+  private async mapaPoltronasPorOrganizacao(
+    organizacaoId: string,
+    excursaoId: string,
+    veiculoRow: VeiculoRow,
+  ) {
     const ocupacoes = await this.db
       .select({
         poltrona: reserva.poltrona,
@@ -63,7 +124,7 @@ export class ReservasService {
       .innerJoin(passageiro, eq(passageiro.id, reserva.passageiroId))
       .where(
         and(
-          eq(reserva.organizacaoId, ctx.organizacaoId),
+          eq(reserva.organizacaoId, organizacaoId),
           eq(reserva.excursaoId, excursaoId),
           inArray(reserva.status, ['ativa', 'embarcada']),
         ),
@@ -147,15 +208,125 @@ export class ReservasService {
     const { row: excursaoRow, veiculoRow } =
       await this.excursionsService.buscarExcursaoOuFalhar(excursaoId);
 
+    // Origem explícita agora que há DOIS chamadores do núcleo (ADR 008):
+    // o organizador é o ator confiável, por isso pode informar valor e forma.
+    const { reservaRow, passageiroRow } = await this.criarReservaNucleo({
+      organizacaoId: ctx.organizacaoId,
+      excursaoRow,
+      veiculoRow,
+      poltrona: dto.poltrona,
+      passageiro: { nome: dto.nome, whatsapp: dto.whatsapp, cpf: dto.cpf },
+      pontoEmbarqueId: dto.ponto_embarque_id ?? null,
+      formaPagamento: dto.forma_pagamento ?? null,
+      valorCentavos: dto.valor_centavos ?? excursaoRow.precoCentavos,
+      origem: 'organizador',
+    });
+    return mapReserva(reservaRow, passageiroRow);
+  }
+
+  // -- H3.2: reserva pública ----------------------------------------------------
+
+  /**
+   * `POST /publico/excursoes/{codigo}/reservas` (`docs/api/publico.yaml`):
+   * zero conta, zero senha — MESMO núcleo transacional do cadastro rápido do
+   * organizador (poltrona única na UNIQUE do banco, expiração, projeção
+   * `publicada → lotada`), com origem `pagina_publica`.
+   *
+   * DECISÃO DE SEGURANÇA (ADR 008): `valor_centavos` é calculado AQUI, a
+   * partir do preço/sinal da excursão — o corpo público só escolhe
+   * `tipo_pagamento` e nunca informa valor nem forma de pagamento.
+   */
+  async criarReservaPublica(codigo: string, dto: CriarReservaPublicaDto) {
+    const { row: excursaoRow, veiculoRow } =
+      await this.excursionsService.buscarExcursaoPublicaPorCodigo(codigo);
+
+    const valorCentavos =
+      dto.tipo_pagamento === 'sinal'
+        ? resolverSinalCentavos(excursaoRow.precoCentavos, excursaoRow.sinalTipo, excursaoRow.sinalValor)
+        : excursaoRow.precoCentavos;
+
+    const { reservaRow } = await this.criarReservaNucleo({
+      organizacaoId: excursaoRow.organizacaoId,
+      excursaoRow,
+      veiculoRow,
+      poltrona: dto.poltrona,
+      passageiro: { nome: dto.nome, whatsapp: dto.whatsapp, cpf: dto.cpf },
+      pontoEmbarqueId: dto.ponto_embarque_id ?? null,
+      formaPagamento: null,
+      valorCentavos,
+      origem: 'pagina_publica',
+    });
+
+    // Cobrança PIX é do billing-specialist (decisão 006): sem serviço público
+    // de billing ainda, a resposta sai com `cobranca: null` e instruções para
+    // combinar o pagamento com o organizador pelo WhatsApp.
+    return mapReservaPublicaCriada(
+      reservaRow,
+      montarInstrucoesReservaPublica(reservaRow.expiraEm, dto.tipo_pagamento),
+    );
+  }
+
+  /**
+   * `GET /publico/reservas/{reservaId}`: o UUID v7 da reserva é o token de
+   * posse (ADR 008 — mesmo padrão de `redefinir-senha` em identity): a
+   * organização sai da PRÓPRIA linha resolvida, nunca de contexto ambiente.
+   * Retorna o MÍNIMO para a tela de confirmação do passageiro.
+   */
+  async consultarSituacaoPublica(reservaId: string) {
+    const [linha] = await this.db
+      .select({ reserva, excursao })
+      .from(reserva)
+      // Join amarrado também pelo tenant desnormalizado (defesa em
+      // profundidade): a excursão exibida é SEMPRE da mesma organização da reserva.
+      .innerJoin(
+        excursao,
+        and(eq(excursao.id, reserva.excursaoId), eq(excursao.organizacaoId, reserva.organizacaoId)),
+      )
+      .where(eq(reserva.id, reservaId))
+      .limit(1);
+    if (!linha) throw new NaoEncontradoException();
+
+    const aguardandoPagamento =
+      linha.reserva.status === 'ativa' && linha.reserva.statusPagamento === 'pendente';
+    return mapSituacaoReservaPublica(
+      linha.reserva,
+      linha.excursao,
+      aguardandoPagamento ? montarInstrucoesReservaPublica(linha.reserva.expiraEm, null) : null,
+    );
+  }
+
+  /**
+   * Núcleo transacional da criação de reserva (H1.9 + H3.2) com o tenant POR
+   * PARÂMETRO (ADR 008): validações de estado/poltrona, reaproveitamento de
+   * passageiro por WhatsApp, expiração e projeção `publicada → lotada` são UMA
+   * implementação só para o organizador e para a página pública. A garantia
+   * de poltrona única continua sendo a UNIQUE do banco → 409 `poltrona_ocupada`.
+   */
+  private async criarReservaNucleo(
+    entrada: EntradaReservaNucleo,
+  ): Promise<{ reservaRow: ReservaRow; passageiroRow: PassageiroRow }> {
+    const { organizacaoId, excursaoRow, veiculoRow } = entrada;
+
     validarExcursaoAceitaReserva(excursaoRow.status);
-    validarPoltronaDoVeiculo(dto.poltrona, veiculoRow);
-    if (dto.ponto_embarque_id) {
-      await this.validarPontoEmbarque(excursaoId, dto.ponto_embarque_id);
+    validarPoltronaDoVeiculo(entrada.poltrona, veiculoRow);
+    if (entrada.pontoEmbarqueId) {
+      await this.validarPontoEmbarquePorOrganizacao(
+        organizacaoId,
+        excursaoRow.id,
+        entrada.pontoEmbarqueId,
+      );
     }
 
-    const passageiroRow = await this.passageirosService.obterOuCriar(dto.nome, dto.whatsapp, dto.cpf);
-    const valorCentavos = dto.valor_centavos ?? excursaoRow.precoCentavos;
-    const expiraEm = await this.calcularExpiracao();
+    const passageiroRow = await this.passageirosService.obterOuCriarPorOrganizacao(
+      organizacaoId,
+      entrada.passageiro.nome,
+      entrada.passageiro.whatsapp,
+      entrada.passageiro.cpf,
+      // Só o organizador sobrescreve nome/cpf de passageiro existente
+      // (ADR 008, segurança item 6) — o ator do fluxo público é anônimo.
+      entrada.origem === 'organizador',
+    );
+    const expiraEm = await this.calcularExpiracaoPorOrganizacao(organizacaoId);
     const capacidade = veiculoRow.quantidadePoltronas - veiculoRow.poltronasBloqueadas.length;
 
     try {
@@ -163,13 +334,14 @@ export class ReservasService {
         const [criada] = await tx
           .insert(reserva)
           .values({
-            organizacaoId: ctx.organizacaoId,
-            excursaoId,
+            organizacaoId,
+            excursaoId: excursaoRow.id,
             passageiroId: passageiroRow.id,
-            pontoEmbarqueId: dto.ponto_embarque_id ?? null,
-            poltrona: dto.poltrona,
-            formaPagamento: dto.forma_pagamento ?? null,
-            valorCentavos,
+            pontoEmbarqueId: entrada.pontoEmbarqueId,
+            poltrona: entrada.poltrona,
+            formaPagamento: entrada.formaPagamento,
+            valorCentavos: entrada.valorCentavos,
+            origem: entrada.origem,
             expiraEm,
           })
           .returning();
@@ -182,8 +354,8 @@ export class ReservasService {
             .from(reserva)
             .where(
               and(
-                eq(reserva.organizacaoId, ctx.organizacaoId),
-                eq(reserva.excursaoId, excursaoId),
+                eq(reserva.organizacaoId, organizacaoId),
+                eq(reserva.excursaoId, excursaoRow.id),
                 inArray(reserva.status, ['ativa', 'embarcada']),
               ),
             );
@@ -191,16 +363,18 @@ export class ReservasService {
             await tx
               .update(excursao)
               .set({ status: 'lotada', atualizadoEm: new Date() })
-              .where(and(eq(excursao.id, excursaoId), eq(excursao.organizacaoId, ctx.organizacaoId)));
+              .where(
+                and(eq(excursao.id, excursaoRow.id), eq(excursao.organizacaoId, organizacaoId)),
+              );
           }
         }
 
         return criada;
       });
-      return mapReserva(novaReserva, passageiroRow);
+      return { reservaRow: novaReserva, passageiroRow };
     } catch (erro) {
       if (isUniqueViolation(erro, 'reserva_excursao_poltrona_ativa_uq')) {
-        const livres = await this.calcularPoltronasLivres(excursaoId, veiculoRow);
+        const livres = await this.calcularPoltronasLivres(organizacaoId, excursaoRow.id, veiculoRow);
         throw new DomainException(
           HttpStatus.CONFLICT,
           'poltrona_ocupada',
@@ -265,7 +439,7 @@ export class ReservasService {
       if (erro instanceof NaoEncontradoException) throw erro;
       if (isUniqueViolation(erro, 'reserva_excursao_poltrona_ativa_uq')) {
         const livres = veiculoParaSugestao
-          ? await this.calcularPoltronasLivres(atual.excursaoId, veiculoParaSugestao)
+          ? await this.calcularPoltronasLivres(ctx.organizacaoId, atual.excursaoId, veiculoParaSugestao)
           : [];
         throw new DomainException(
           HttpStatus.CONFLICT,
@@ -559,6 +733,15 @@ export class ReservasService {
 
   private async validarPontoEmbarque(excursaoId: string, pontoEmbarqueId: string): Promise<void> {
     const ctx = TenantContextStorage.get();
+    return this.validarPontoEmbarquePorOrganizacao(ctx.organizacaoId, excursaoId, pontoEmbarqueId);
+  }
+
+  /** Núcleo de `validarPontoEmbarque` com o tenant POR PARÂMETRO (ADR 008). */
+  private async validarPontoEmbarquePorOrganizacao(
+    organizacaoId: string,
+    excursaoId: string,
+    pontoEmbarqueId: string,
+  ): Promise<void> {
     const [row] = await this.db
       .select({ id: pontoEmbarque.id })
       .from(pontoEmbarque)
@@ -566,7 +749,7 @@ export class ReservasService {
         and(
           eq(pontoEmbarque.id, pontoEmbarqueId),
           eq(pontoEmbarque.excursaoId, excursaoId),
-          eq(pontoEmbarque.organizacaoId, ctx.organizacaoId),
+          eq(pontoEmbarque.organizacaoId, organizacaoId),
         ),
       )
       .limit(1);
@@ -587,28 +770,28 @@ export class ReservasService {
     }
   }
 
-  private async calcularExpiracao(): Promise<Date> {
-    const ctx = TenantContextStorage.get();
+  /** Prazo de expiração da organização (tenant POR PARÂMETRO — ADR 008): usado pelos dois fluxos de criação. */
+  private async calcularExpiracaoPorOrganizacao(organizacaoId: string): Promise<Date> {
     const [org] = await this.db
       .select({ prazoHoras: organizacao.prazoExpiracaoReservaHoras })
       .from(organizacao)
-      .where(eq(organizacao.id, ctx.organizacaoId))
+      .where(eq(organizacao.id, organizacaoId))
       .limit(1);
     const prazoHoras = org?.prazoHoras ?? 48;
     return new Date(Date.now() + prazoHoras * 60 * 60 * 1000);
   }
 
   private async calcularPoltronasLivres(
+    organizacaoId: string,
     excursaoId: string,
     veiculoRow: VeiculoPoltronas,
   ): Promise<number[]> {
-    const ctx = TenantContextStorage.get();
     const ocupadas = await this.db
       .select({ poltrona: reserva.poltrona })
       .from(reserva)
       .where(
         and(
-          eq(reserva.organizacaoId, ctx.organizacaoId),
+          eq(reserva.organizacaoId, organizacaoId),
           eq(reserva.excursaoId, excursaoId),
           inArray(reserva.status, ['ativa', 'embarcada']),
         ),

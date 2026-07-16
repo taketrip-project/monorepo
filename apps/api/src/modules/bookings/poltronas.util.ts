@@ -41,6 +41,28 @@ export function montarPoltronaMapa(
   };
 }
 
+export type EstadoPoltronaPublico = 'livre' | 'ocupada' | 'bloqueada';
+
+export interface PoltronaMapaPublico {
+  numero: number;
+  estado: EstadoPoltronaPublico;
+}
+
+/**
+ * Estado REDUZIDO de uma poltrona no mapa público (H3.2,
+ * `docs/api/publico.yaml`): o passageiro NUNCA vê pendente/pago nem nome de
+ * ninguém — só o que precisa para escolher poltrona livre. Mesma prioridade
+ * defensiva do mapa do organizador: bloqueada vence qualquer ocupação.
+ */
+export function montarPoltronaMapaPublico(
+  numero: number,
+  bloqueada: boolean,
+  ocupada: boolean,
+): PoltronaMapaPublico {
+  if (bloqueada) return { numero, estado: 'bloqueada' };
+  return { numero, estado: ocupada ? 'ocupada' : 'livre' };
+}
+
 /**
  * Sugestão de poltronas livres para a resposta 409 `poltrona_ocupada`
  * (H1.9). Limitada a `limite` itens — não há necessidade de listar todas as

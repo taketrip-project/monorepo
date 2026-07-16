@@ -22,12 +22,24 @@ export class ContadorReservasService {
   /** Quantas reservas ocupam poltrona hoje (ativa + embarcada) nesta excursão. */
   async contarReservasAtivas(excursaoId: string): Promise<number> {
     const ctx = TenantContextStorage.get();
+    return this.contarReservasAtivasPorOrganizacao(ctx.organizacaoId, excursaoId);
+  }
+
+  /**
+   * Núcleo de `contarReservasAtivas` com o tenant POR PARÂMETRO (ADR 008):
+   * a página pública (H3.1) calcula `vagas`/`capacidade` sem `TenantContext`
+   * — o `organizacaoId` vem da linha resolvida pelo `codigo_publico`.
+   */
+  async contarReservasAtivasPorOrganizacao(
+    organizacaoId: string,
+    excursaoId: string,
+  ): Promise<number> {
     const [{ total }] = await this.db
       .select({ total: count() })
       .from(reserva)
       .where(
         and(
-          eq(reserva.organizacaoId, ctx.organizacaoId),
+          eq(reserva.organizacaoId, organizacaoId),
           eq(reserva.excursaoId, excursaoId),
           inArray(reserva.status, ['ativa', 'embarcada']),
         ),

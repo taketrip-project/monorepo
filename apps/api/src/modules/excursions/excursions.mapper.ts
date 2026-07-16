@@ -54,6 +54,41 @@ export function mapFotoFactory(storage: ArquivoStorageService) {
   });
 }
 
+/**
+ * `ExcursaoPublica` de `docs/api/publico.yaml` (H3.1): tudo que o passageiro
+ * precisa — e NADA de outros passageiros (nem ids internos: a excursão é
+ * identificada só pelo `codigo_publico`). `aceita_reserva` poupa o front de
+ * conhecer o enum de status: false quando as vagas zeraram (status `lotada`).
+ */
+export function mapExcursaoPublica(
+  row: ExcursaoRow,
+  calc: { vagas: number; capacidade: number },
+  organizacaoNome: string,
+  dados: { fotos: string[]; pontosEmbarque: ReturnType<typeof mapPontoEmbarque>[] },
+) {
+  return {
+    codigo: row.codigoPublico,
+    destino: row.destino,
+    evento_ancora: row.eventoAncora,
+    data_saida: row.dataSaida.toISOString(),
+    data_retorno: row.dataRetorno.toISOString(),
+    tipo: row.tipo,
+    preco_centavos: row.precoCentavos,
+    sinal_centavos: resolverSinalCentavos(row.precoCentavos, row.sinalTipo, row.sinalValor),
+    descricao: row.descricao,
+    fotos: dados.fotos,
+    vagas: calc.vagas,
+    capacidade: calc.capacidade,
+    aceita_reserva: calc.vagas > 0,
+    organizacao_nome: organizacaoNome,
+    pontos_embarque: dados.pontosEmbarque.map((p) => ({
+      local: p.local,
+      horario: p.horario,
+      ordem: p.ordem,
+    })),
+  };
+}
+
 export interface DadosExcursaoCompleta {
   urlPublicaBase: string;
   fotos: ReturnType<ReturnType<typeof mapFotoFactory>>[];

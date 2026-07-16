@@ -1,4 +1,4 @@
-import { montarPoltronaMapa, poltronasLivres } from './poltronas.util';
+import { montarPoltronaMapa, montarPoltronaMapaPublico, poltronasLivres } from './poltronas.util';
 
 describe('montarPoltronaMapa', () => {
   it('caminho feliz: sem ocupação e sem bloqueio é livre', () => {
@@ -39,6 +39,18 @@ describe('montarPoltronaMapa', () => {
       passageiroNome: 'Maria',
     }).estado;
     expect(estado).toBe('bloqueada');
+  });
+});
+
+describe('montarPoltronaMapaPublico', () => {
+  it('caminho feliz: reduz para livre · ocupada · bloqueada, sem reserva nem nome', () => {
+    expect(montarPoltronaMapaPublico(1, false, false)).toEqual({ numero: 1, estado: 'livre' });
+    expect(montarPoltronaMapaPublico(2, false, true)).toEqual({ numero: 2, estado: 'ocupada' });
+    expect(montarPoltronaMapaPublico(3, true, false)).toEqual({ numero: 3, estado: 'bloqueada' });
+  });
+
+  it('caso de borda: bloqueio no veículo vence qualquer ocupação (mesma prioridade do mapa do organizador)', () => {
+    expect(montarPoltronaMapaPublico(4, true, true)).toEqual({ numero: 4, estado: 'bloqueada' });
   });
 });
 

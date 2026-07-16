@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { RateLimitPublicoModule } from '../../common/rate-limit-publico';
 import { ExcursionsController } from './excursions.controller';
+import { ExcursaoPublicaController } from './excursao-publica.controller';
 import { ExcursionsService } from './excursions.service';
 import { PontosEmbarqueController } from './pontos-embarque.controller';
 import { PontosEmbarqueService } from './pontos-embarque.service';
@@ -30,8 +32,12 @@ import { LocalArquivoStorageService } from './storage/local-arquivo-storage.serv
  * validar o ciclo salvar → obter url → remover.
  */
 @Module({
+  // `RateLimitPublicoModule` (ADR 008): provê o storage/opções do throttler
+  // para o `PublicoThrottlerGuard` aplicado SÓ nos controllers públicos.
+  imports: [RateLimitPublicoModule],
   controllers: [
     ExcursionsController,
+    ExcursaoPublicaController,
     PontosEmbarqueController,
     FotosController,
     InicioController,

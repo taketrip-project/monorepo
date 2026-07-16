@@ -13,6 +13,46 @@ export function mapPassageiro(row: PassageiroRow) {
   };
 }
 
+/**
+ * `ReservaPublicaCriada` de `docs/api/publico.yaml` (H3.2): o MÍNIMO para a
+ * tela de confirmação do passageiro — o `reserva_id` (UUID v7) é o token de
+ * posse do link de acompanhamento. `cobranca` fica `null` enquanto o billing
+ * não expõe serviço público (decisão 006 — pagamento combinado por WhatsApp).
+ */
+export function mapReservaPublicaCriada(row: ReservaRow, instrucoes: string) {
+  return {
+    reserva_id: row.id,
+    poltrona: row.poltrona,
+    status_pagamento: row.statusPagamento,
+    expira_em: row.expiraEm ? row.expiraEm.toISOString() : null,
+    cobranca: null,
+    instrucoes,
+  };
+}
+
+/**
+ * `SituacaoReservaPublica` de `docs/api/publico.yaml`: status, poltrona,
+ * prazo e instruções — NUNCA dados de outros passageiros nem da excursão além
+ * de destino/data.
+ */
+export function mapSituacaoReservaPublica(
+  row: ReservaRow,
+  excursaoRow: { destino: string; dataSaida: Date },
+  instrucoes: string | null,
+) {
+  return {
+    reserva_id: row.id,
+    poltrona: row.poltrona,
+    status: row.status,
+    status_pagamento: row.statusPagamento,
+    destino: excursaoRow.destino,
+    data_saida: excursaoRow.dataSaida.toISOString(),
+    expira_em: row.expiraEm ? row.expiraEm.toISOString() : null,
+    cobranca: null,
+    instrucoes,
+  };
+}
+
 /** `Reserva` de `docs/api/bookings.yaml` — sempre com o passageiro embutido. */
 export function mapReserva(row: ReservaRow, passageiroRow: PassageiroRow) {
   return {
