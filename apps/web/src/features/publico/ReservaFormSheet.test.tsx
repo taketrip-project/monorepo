@@ -18,6 +18,7 @@ function renderSheet(props: Partial<Parameters<typeof ReservaFormSheet>[0]> = {}
       open
       onClose={vi.fn()}
       codigo="abc123"
+      organizacaoNome="Ondas do Mar Excursões"
       poltrona={4}
       precoCentavos={18000}
       sinalCentavos={9000}
@@ -42,6 +43,19 @@ describe('ReservaFormSheet', () => {
     expect(chip).toBeInTheDocument();
     expect(chip.querySelector('.tt-mono')).toHaveTextContent('4');
     expect(screen.queryByLabelText(/Poltrona/)).not.toBeInTheDocument();
+  });
+
+  it('mostra o aviso LGPD com o nome da organização e o link da política, sem checkbox (ADR 010)', () => {
+    renderSheet();
+
+    const aviso = screen.getByText(/vão direto para/);
+    expect(aviso).toHaveTextContent(
+      'Seus dados (nome, WhatsApp e CPF, se informar) vão direto para Ondas do Mar Excursões, que organiza esta excursão, e servem só para a sua reserva, o contato e o embarque.',
+    );
+    const link = screen.getByRole('link', { name: 'Política de Privacidade (abre em nova aba)' });
+    expect(link).toHaveAttribute('href', '/privacidade');
+    // Decisão deliberada do ADR: informar, não pedir consentimento.
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
   });
 
   it('valida nome e WhatsApp inline, sem chamar a API', async () => {

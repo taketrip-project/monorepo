@@ -288,6 +288,7 @@ export function ExcursaoPublicaPage() {
         open={sheetAberto}
         onClose={() => setSheetAberto(false)}
         codigo={excursao.codigo}
+        organizacaoNome={excursao.organizacao_nome}
         poltrona={selecionada}
         precoCentavos={excursao.preco_centavos}
         sinalCentavos={excursao.sinal_centavos}

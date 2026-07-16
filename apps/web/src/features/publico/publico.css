@@ -268,6 +268,26 @@
   color: var(--tt-ink-mute);
 }
 
+/* Aviso LGPD do formulário de reserva (H3.7, ADR 010) — texto corrido em
+   fonte secundária, sem checkbox de consentimento (decisão do ADR). */
+.tt-publico-lgpd {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--tt-ink-mute);
+}
+
+.tt-publico-lgpd strong {
+  font-weight: 600;
+  color: var(--tt-ink);
+}
+
+.tt-publico-lgpd a {
+  color: var(--tt-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* Alerta de tela (erro/aviso/sucesso) — sempre cor + ícone + texto. */
 .tt-publico-alert {
   display: flex;
@@ -320,6 +340,62 @@
   font-size: 19px;
   font-weight: 600;
   color: var(--tt-ink);
+}
+
+/* ---- Página de política de privacidade (H3.7, ADR 010) ---- */
+
+.tt-publico-politica {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tt-space-16);
+}
+
+.tt-publico-politica-titulo {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--tt-ink);
+}
+
+.tt-publico-politica section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tt-space-8);
+}
+
+.tt-publico-politica h2 {
+  margin: 0;
+  padding-top: var(--tt-space-8);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--tt-ink);
+}
+
+.tt-publico-politica p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--tt-ink);
+}
+
+.tt-publico-politica ul {
+  margin: 0;
+  padding-left: var(--tt-space-20);
+  display: flex;
+  flex-direction: column;
+  gap: var(--tt-space-8);
+}
+
+.tt-publico-politica li {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--tt-ink);
+}
+
+.tt-publico-politica strong {
+  font-weight: 600;
 }
 
 /* ---- Página da situação da reserva ---- */

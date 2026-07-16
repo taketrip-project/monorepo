@@ -15,6 +15,8 @@ export interface ReservaFormSheetProps {
   open: boolean;
   onClose: () => void;
   codigo: string;
+  /** Nome da organização controladora dos dados — aviso LGPD (ADR 010, Anexo A). */
+  organizacaoNome: string;
   /** Poltrona tocada no mapa — sempre pré-selecionada, nunca campo de formulário. */
   poltrona: number | null;
   precoCentavos: number;
@@ -36,6 +38,7 @@ export function ReservaFormSheet({
   open,
   onClose,
   codigo,
+  organizacaoNome,
   poltrona,
   precoCentavos,
   sinalCentavos,
@@ -205,6 +208,24 @@ export function ReservaFormSheet({
         {poltronasLivresSugeridas && poltronasLivresSugeridas.length > 0 && (
           <p className="tt-publico-mute">Poltronas livres: {poltronasLivresSugeridas.join(', ')}.</p>
         )}
+
+        {/* Aviso LGPD (ADR 010, Anexo A) — sem checkbox de consentimento, por
+            decisão do ADR: a base legal é a execução da reserva pedida pelo
+            próprio titular. Link em nova aba para não perder o formulário. */}
+        <p className="tt-publico-lgpd">
+          Seus dados (nome, WhatsApp e CPF, se informar) vão direto para{' '}
+          <strong>{organizacaoNome}</strong>, que organiza esta excursão, e servem só para a sua
+          reserva, o contato e o embarque. Saiba mais na{' '}
+          <a
+            href="/privacidade"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Política de Privacidade (abre em nova aba)"
+          >
+            Política de Privacidade
+          </a>
+          .
+        </p>
 
         <Button type="submit" size="lg" fullWidth loading={salvando} loadingLabel="Reservando..." disabled={poltrona === null}>
           Confirmar reserva

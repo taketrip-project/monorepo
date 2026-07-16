@@ -19,6 +19,7 @@ import { ExcursaoDetalhePage } from './features/excursoes/ExcursaoDetalhePage';
 import { ReservaDetalhePage } from './features/excursoes/ReservaDetalhePage';
 import { ExcursaoPublicaPage } from './features/publico/ExcursaoPublicaPage';
 import { ReservaPublicaRoute } from './features/publico/ReservaPublicaPage';
+import { PrivacidadePage } from './features/publico/PrivacidadePage';
 
 /**
  * App shell: roteamento público (auth + página da excursão/reserva do
@@ -42,6 +43,9 @@ function App() {
               pelo organizador; /r/{reservaId} é o link de acompanhamento. */}
           <Route path="/e/:codigo" element={<ExcursaoPublicaPage />} />
           <Route path="/r/:reservaId" element={<ReservaPublicaRoute />} />
+          {/* Política de privacidade (H3.7, ADR 010) — linkada do formulário
+              público de reserva; estática, sem login. */}
+          <Route path="/privacidade" element={<PrivacidadePage />} />
 
           <Route element={<ProtectedRoute />}>
             <Route element={<AppShell />}>
